@@ -36,6 +36,7 @@ import (
 	"k8s.io/klog/v2"
 	"k8s.io/kube-state-metrics/v2/pkg/app"
 	"k8s.io/kube-state-metrics/v2/pkg/options"
+
 	"sigs.k8s.io/cluster-api/exp/state-metrics/pkg/store"
 )
 

@@ -24,7 +24,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	generator "k8s.io/kube-state-metrics/v2/pkg/metric_generator"
 	"k8s.io/utils/pointer"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha4"
+
+	clusterv1alpha4 "sigs.k8s.io/cluster-api/api/v1alpha4"
 )
 
 func TestMachineStore(t *testing.T) {
@@ -33,7 +34,7 @@ func TestMachineStore(t *testing.T) {
 
 	cases := []generateMetricsTestCase{
 		{
-			Obj: &clusterv1.Machine{
+			Obj: &clusterv1alpha4.Machine{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:              "m1",
 					Namespace:         "ns1",
@@ -63,7 +64,7 @@ func TestMachineStore(t *testing.T) {
 			MetricNames: []string{"capi_machine_labels", "capi_machine_created", "capi_machine_owner"},
 		},
 		{
-			Obj: &clusterv1.Machine{
+			Obj: &clusterv1alpha4.Machine{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:              "m2",
 					Namespace:         "ns2",
@@ -71,8 +72,8 @@ func TestMachineStore(t *testing.T) {
 					ResourceVersion:   "10597",
 					UID:               types.UID("foo"),
 				},
-				Status: clusterv1.MachineStatus{
-					Phase: string(clusterv1.MachinePhaseProvisioning),
+				Status: clusterv1alpha4.MachineStatus{
+					Phase: string(clusterv1alpha4.MachinePhaseProvisioning),
 				},
 			},
 			Want: `
@@ -90,7 +91,7 @@ func TestMachineStore(t *testing.T) {
 			MetricNames: []string{"capi_machine_status_phase"},
 		},
 		{
-			Obj: &clusterv1.Machine{
+			Obj: &clusterv1alpha4.Machine{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:              "m2",
 					Namespace:         "ns2",
@@ -98,18 +99,18 @@ func TestMachineStore(t *testing.T) {
 					ResourceVersion:   "10597",
 					UID:               types.UID("foo"),
 				},
-				Status: clusterv1.MachineStatus{
-					Conditions: clusterv1.Conditions{
-						clusterv1.Condition{
-							Type:   clusterv1.PreDrainDeleteHookSucceededCondition,
+				Status: clusterv1alpha4.MachineStatus{
+					Conditions: clusterv1alpha4.Conditions{
+						clusterv1alpha4.Condition{
+							Type:   clusterv1alpha4.PreDrainDeleteHookSucceededCondition,
 							Status: corev1.ConditionTrue,
 						},
-						clusterv1.Condition{
-							Type:   clusterv1.PreTerminateDeleteHookSucceededCondition,
+						clusterv1alpha4.Condition{
+							Type:   clusterv1alpha4.PreTerminateDeleteHookSucceededCondition,
 							Status: corev1.ConditionFalse,
 						},
-						clusterv1.Condition{
-							Type:   clusterv1.MachineNodeHealthyCondition,
+						clusterv1alpha4.Condition{
+							Type:   clusterv1alpha4.MachineNodeHealthyCondition,
 							Status: corev1.ConditionUnknown,
 						},
 					},
@@ -131,7 +132,7 @@ func TestMachineStore(t *testing.T) {
 			MetricNames: []string{"capi_machine_status_condition"},
 		},
 		{
-			Obj: &clusterv1.Machine{
+			Obj: &clusterv1alpha4.Machine{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:              "m4",
 					Namespace:         "ns4",
@@ -139,7 +140,7 @@ func TestMachineStore(t *testing.T) {
 					ResourceVersion:   "10596",
 					UID:               types.UID("foo"),
 				},
-				Status: clusterv1.MachineStatus{
+				Status: clusterv1alpha4.MachineStatus{
 					NodeRef: &corev1.ObjectReference{
 						APIVersion: "v1",
 						Kind:       "Node",
@@ -155,7 +156,7 @@ func TestMachineStore(t *testing.T) {
 			MetricNames: []string{"capi_machine_status_noderef"},
 		},
 		{
-			Obj: &clusterv1.Machine{
+			Obj: &clusterv1alpha4.Machine{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:              "m5",
 					Namespace:         "ns5",
@@ -163,15 +164,15 @@ func TestMachineStore(t *testing.T) {
 					ResourceVersion:   "10596",
 					UID:               types.UID("foo"),
 				},
-				Spec: clusterv1.MachineSpec{
+				Spec: clusterv1alpha4.MachineSpec{
 					ProviderID:    pointer.String("openstack:///m5"),
 					FailureDomain: pointer.String("foo"),
 				},
-				Status: clusterv1.MachineStatus{
+				Status: clusterv1alpha4.MachineStatus{
 					Version: pointer.String("v9.9.9"),
-					Addresses: clusterv1.MachineAddresses{
-						clusterv1.MachineAddress{
-							Type:    clusterv1.MachineInternalIP,
+					Addresses: clusterv1alpha4.MachineAddresses{
+						clusterv1alpha4.MachineAddress{
+							Type:    clusterv1alpha4.MachineInternalIP,
 							Address: "192.168.0.2",
 						},
 					},
@@ -186,7 +187,7 @@ func TestMachineStore(t *testing.T) {
 		},
 	}
 	for i, c := range cases {
-		f := MachineFactory{}
+		f := machineFactory{}
 		c.Func = generator.ComposeMetricGenFuncs(f.MetricFamilyGenerators(nil, nil))
 		c.Headers = generator.ExtractMetricFamilyHeaders(f.MetricFamilyGenerators(nil, nil))
 		if err := c.run(); err != nil {

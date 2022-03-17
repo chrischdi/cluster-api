@@ -21,10 +21,11 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/kube-state-metrics/v2/pkg/metric"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha4"
+
+	clusterv1alpha4 "sigs.k8s.io/cluster-api/api/v1alpha4"
 )
 
-func getConditionMetricFamily(conditions clusterv1.Conditions) *metric.Family {
+func getConditionMetricFamily(conditions clusterv1alpha4.Conditions) *metric.Family {
 	ms := make([]*metric.Metric, len(conditions)*len(conditionStatuses))
 
 	for i, c := range conditions {

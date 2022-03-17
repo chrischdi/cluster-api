@@ -23,7 +23,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	generator "k8s.io/kube-state-metrics/v2/pkg/metric_generator"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha4"
+
+	clusterv1alpha4 "sigs.k8s.io/cluster-api/api/v1alpha4"
 )
 
 func TestClusterStore(t *testing.T) {
@@ -32,7 +33,7 @@ func TestClusterStore(t *testing.T) {
 
 	cases := []generateMetricsTestCase{
 		{
-			Obj: &clusterv1.Cluster{
+			Obj: &clusterv1alpha4.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:              "cluster1",
 					Namespace:         "ns1",
@@ -52,7 +53,7 @@ func TestClusterStore(t *testing.T) {
 			MetricNames: []string{"capi_cluster_labels", "capi_cluster_created"},
 		},
 		{
-			Obj: &clusterv1.Cluster{
+			Obj: &clusterv1alpha4.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:              "cluster2",
 					Namespace:         "ns2",
@@ -60,8 +61,8 @@ func TestClusterStore(t *testing.T) {
 					ResourceVersion:   "10597",
 					UID:               types.UID("foo"),
 				},
-				Status: clusterv1.ClusterStatus{
-					Phase: string(clusterv1.ClusterPhaseFailed),
+				Status: clusterv1alpha4.ClusterStatus{
+					Phase: string(clusterv1alpha4.ClusterPhaseFailed),
 				},
 			},
 			Want: `
@@ -77,7 +78,7 @@ func TestClusterStore(t *testing.T) {
 			MetricNames: []string{"capi_cluster_status_phase"},
 		},
 		{
-			Obj: &clusterv1.Cluster{
+			Obj: &clusterv1alpha4.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:              "cluster2",
 					Namespace:         "ns2",
@@ -85,19 +86,19 @@ func TestClusterStore(t *testing.T) {
 					ResourceVersion:   "10597",
 					UID:               types.UID("foo"),
 				},
-				Status: clusterv1.ClusterStatus{
-					Phase: string(clusterv1.ClusterPhaseFailed),
-					Conditions: clusterv1.Conditions{
-						clusterv1.Condition{
-							Type:   clusterv1.InfrastructureReadyCondition,
+				Status: clusterv1alpha4.ClusterStatus{
+					Phase: string(clusterv1alpha4.ClusterPhaseFailed),
+					Conditions: clusterv1alpha4.Conditions{
+						clusterv1alpha4.Condition{
+							Type:   clusterv1alpha4.InfrastructureReadyCondition,
 							Status: corev1.ConditionTrue,
 						},
-						clusterv1.Condition{
-							Type:   clusterv1.ReadyCondition,
+						clusterv1alpha4.Condition{
+							Type:   clusterv1alpha4.ReadyCondition,
 							Status: corev1.ConditionFalse,
 						},
-						clusterv1.Condition{
-							Type:   clusterv1.ControlPlaneInitializedCondition,
+						clusterv1alpha4.Condition{
+							Type:   clusterv1alpha4.ControlPlaneInitializedCondition,
 							Status: corev1.ConditionUnknown,
 						},
 					},
@@ -120,7 +121,7 @@ func TestClusterStore(t *testing.T) {
 		},
 	}
 	for i, c := range cases {
-		f := ClusterFactory{}
+		f := clusterFactory{}
 		c.Func = generator.ComposeMetricGenFuncs(f.MetricFamilyGenerators(nil, nil))
 		c.Headers = generator.ExtractMetricFamilyHeaders(f.MetricFamilyGenerators(nil, nil))
 		if err := c.run(); err != nil {

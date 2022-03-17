@@ -23,7 +23,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	generator "k8s.io/kube-state-metrics/v2/pkg/metric_generator"
 	"k8s.io/utils/pointer"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha4"
+
+	clusterv1alpha4 "sigs.k8s.io/cluster-api/api/v1alpha4"
 )
 
 func TestMachineSetStore(t *testing.T) {
@@ -32,7 +33,7 @@ func TestMachineSetStore(t *testing.T) {
 
 	cases := []generateMetricsTestCase{
 		{
-			Obj: &clusterv1.MachineSet{
+			Obj: &clusterv1alpha4.MachineSet{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:              "ms1",
 					Namespace:         "ns1",
@@ -62,7 +63,7 @@ func TestMachineSetStore(t *testing.T) {
 			MetricNames: []string{"capi_machineset_labels", "capi_machineset_created", "capi_machineset_owner"},
 		},
 		{
-			Obj: &clusterv1.MachineSet{
+			Obj: &clusterv1alpha4.MachineSet{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:              "ms1",
 					Namespace:         "ns1",
@@ -70,10 +71,10 @@ func TestMachineSetStore(t *testing.T) {
 					ResourceVersion:   "10596",
 					UID:               types.UID("foo"),
 				},
-				Spec: clusterv1.MachineSetSpec{
+				Spec: clusterv1alpha4.MachineSetSpec{
 					Replicas: pointer.Int32(3),
 				},
-				Status: clusterv1.MachineSetStatus{
+				Status: clusterv1alpha4.MachineSetStatus{
 					Replicas:             3,
 					FullyLabeledReplicas: 2,
 					ReadyReplicas:        1,
@@ -101,7 +102,7 @@ func TestMachineSetStore(t *testing.T) {
 		},
 	}
 	for i, c := range cases {
-		f := MachineSetFactory{}
+		f := machineSetFactory{}
 		c.Func = generator.ComposeMetricGenFuncs(f.MetricFamilyGenerators(nil, nil))
 		c.Headers = generator.ExtractMetricFamilyHeaders(f.MetricFamilyGenerators(nil, nil))
 		if err := c.run(); err != nil {

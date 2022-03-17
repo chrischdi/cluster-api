@@ -23,37 +23,41 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/kube-state-metrics/v2/pkg/customresource"
 	"k8s.io/kube-state-metrics/v2/pkg/metric"
 	generator "k8s.io/kube-state-metrics/v2/pkg/metric_generator"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha4"
-	"sigs.k8s.io/cluster-api/util/annotations"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	clusterv1alpha4 "sigs.k8s.io/cluster-api/api/v1alpha4"
+	"sigs.k8s.io/cluster-api/util/annotations"
 )
 
 // +kubebuilder:rbac:groups=cluster.x-k8s.io,resources=machines,verbs=get;list;watch
 
 var descMachineLabelsDefaultLabels = []string{"namespace", "machine", "uid"}
 
-type MachineFactory struct {
-	*ControllerRuntimeClientFactory
+type machineFactory struct {
+	*controllerRuntimeClientFactory
 }
 
-func (f *MachineFactory) Name() string {
+var _ customresource.RegistryFactory = &machineFactory{}
+
+func (f *machineFactory) Name() string {
 	return "machines"
 }
 
-func (f *MachineFactory) ExpectedType() interface{} {
-	return &clusterv1.Machine{}
+func (f *machineFactory) ExpectedType() interface{} {
+	return &clusterv1alpha4.Machine{}
 }
 
-func (f *MachineFactory) MetricFamilyGenerators(allowAnnotationsList, allowLabelsList []string) []generator.FamilyGenerator {
+func (f *machineFactory) MetricFamilyGenerators(allowAnnotationsList, allowLabelsList []string) []generator.FamilyGenerator {
 	return []generator.FamilyGenerator{
 		*generator.NewFamilyGenerator(
 			"capi_machine_labels",
 			"Kubernetes labels converted to Prometheus labels.",
 			metric.Gauge,
 			"",
-			wrapMachineFunc(func(m *clusterv1.Machine) *metric.Family {
+			wrapMachineFunc(func(m *clusterv1alpha4.Machine) *metric.Family {
 				labelKeys, labelValues := createLabelKeysValues(m.Labels, allowLabelsList)
 				return &metric.Family{
 					Metrics: []*metric.Metric{
@@ -71,7 +75,7 @@ func (f *MachineFactory) MetricFamilyGenerators(allowAnnotationsList, allowLabel
 			"Unix creation timestamp",
 			metric.Gauge,
 			"",
-			wrapMachineFunc(func(m *clusterv1.Machine) *metric.Family {
+			wrapMachineFunc(func(m *clusterv1alpha4.Machine) *metric.Family {
 				ms := []*metric.Metric{}
 
 				if !m.CreationTimestamp.IsZero() {
@@ -92,7 +96,7 @@ func (f *MachineFactory) MetricFamilyGenerators(allowAnnotationsList, allowLabel
 			"The machine is paused and not reconciled.",
 			metric.Gauge,
 			"",
-			wrapMachineFunc(func(m *clusterv1.Machine) *metric.Family {
+			wrapMachineFunc(func(m *clusterv1alpha4.Machine) *metric.Family {
 				paused := annotations.HasPausedAnnotation(m)
 				return &metric.Family{
 					Metrics: []*metric.Metric{
@@ -110,8 +114,8 @@ func (f *MachineFactory) MetricFamilyGenerators(allowAnnotationsList, allowLabel
 			"The machines current phase.",
 			metric.Gauge,
 			"",
-			wrapMachineFunc(func(m *clusterv1.Machine) *metric.Family {
-				phase := clusterv1.MachinePhase(m.Status.Phase)
+			wrapMachineFunc(func(m *clusterv1alpha4.Machine) *metric.Family {
+				phase := clusterv1alpha4.MachinePhase(m.Status.Phase)
 				if phase == "" {
 					return &metric.Family{
 						Metrics: []*metric.Metric{},
@@ -122,14 +126,14 @@ func (f *MachineFactory) MetricFamilyGenerators(allowAnnotationsList, allowLabel
 					v bool
 					n string
 				}{
-					{phase == clusterv1.MachinePhasePending, string(clusterv1.MachinePhasePending)},
-					{phase == clusterv1.MachinePhaseProvisioning, string(clusterv1.MachinePhaseProvisioning)},
-					{phase == clusterv1.MachinePhaseProvisioned, string(clusterv1.MachinePhaseProvisioned)},
-					{phase == clusterv1.MachinePhaseRunning, string(clusterv1.MachinePhaseRunning)},
-					{phase == clusterv1.MachinePhaseDeleting, string(clusterv1.MachinePhaseDeleting)},
-					{phase == clusterv1.MachinePhaseDeleted, string(clusterv1.MachinePhaseDeleted)},
-					{phase == clusterv1.MachinePhaseFailed, string(clusterv1.MachinePhaseFailed)},
-					{phase == clusterv1.MachinePhaseUnknown, string(clusterv1.MachinePhaseUnknown)},
+					{phase == clusterv1alpha4.MachinePhasePending, string(clusterv1alpha4.MachinePhasePending)},
+					{phase == clusterv1alpha4.MachinePhaseProvisioning, string(clusterv1alpha4.MachinePhaseProvisioning)},
+					{phase == clusterv1alpha4.MachinePhaseProvisioned, string(clusterv1alpha4.MachinePhaseProvisioned)},
+					{phase == clusterv1alpha4.MachinePhaseRunning, string(clusterv1alpha4.MachinePhaseRunning)},
+					{phase == clusterv1alpha4.MachinePhaseDeleting, string(clusterv1alpha4.MachinePhaseDeleting)},
+					{phase == clusterv1alpha4.MachinePhaseDeleted, string(clusterv1alpha4.MachinePhaseDeleted)},
+					{phase == clusterv1alpha4.MachinePhaseFailed, string(clusterv1alpha4.MachinePhaseFailed)},
+					{phase == clusterv1alpha4.MachinePhaseUnknown, string(clusterv1alpha4.MachinePhaseUnknown)},
 				}
 
 				ms := make([]*metric.Metric, len(phases))
@@ -152,7 +156,7 @@ func (f *MachineFactory) MetricFamilyGenerators(allowAnnotationsList, allowLabel
 			"The current status conditions of a machine.",
 			metric.Gauge,
 			"",
-			wrapMachineFunc(func(m *clusterv1.Machine) *metric.Family {
+			wrapMachineFunc(func(m *clusterv1alpha4.Machine) *metric.Family {
 				return getConditionMetricFamily(m.Status.Conditions)
 			}),
 		),
@@ -161,7 +165,7 @@ func (f *MachineFactory) MetricFamilyGenerators(allowAnnotationsList, allowLabel
 			"Information about the machine's owner.",
 			metric.Gauge,
 			"",
-			wrapMachineFunc(func(m *clusterv1.Machine) *metric.Family {
+			wrapMachineFunc(func(m *clusterv1alpha4.Machine) *metric.Family {
 				return getOwnerMetric(m.GetOwnerReferences())
 			}),
 		),
@@ -170,7 +174,7 @@ func (f *MachineFactory) MetricFamilyGenerators(allowAnnotationsList, allowLabel
 			"Information about the machine's node reference.",
 			metric.Gauge,
 			"",
-			wrapMachineFunc(func(m *clusterv1.Machine) *metric.Family {
+			wrapMachineFunc(func(m *clusterv1alpha4.Machine) *metric.Family {
 				nodeRef := m.Status.NodeRef
 
 				if nodeRef == nil {
@@ -198,7 +202,7 @@ func (f *MachineFactory) MetricFamilyGenerators(allowAnnotationsList, allowLabel
 			"Information about a machine.",
 			metric.Gauge,
 			"",
-			wrapMachineFunc(func(m *clusterv1.Machine) *metric.Family {
+			wrapMachineFunc(func(m *clusterv1alpha4.Machine) *metric.Family {
 				labelKeys := []string{}
 				labelValues := []string{}
 
@@ -238,26 +242,26 @@ func (f *MachineFactory) MetricFamilyGenerators(allowAnnotationsList, allowLabel
 	}
 }
 
-func (f *MachineFactory) ListWatch(customResourceClient interface{}, ns string, fieldSelector string) cache.ListerWatcher {
+func (f *machineFactory) ListWatch(customResourceClient interface{}, ns string, fieldSelector string) cache.ListerWatcher {
 	ctrlClient := customResourceClient.(client.WithWatch)
 	return &cache.ListWatch{
 		ListFunc: func(opts metav1.ListOptions) (runtime.Object, error) {
-			machineList := clusterv1.MachineList{}
+			machineList := clusterv1alpha4.MachineList{}
 			opts.FieldSelector = fieldSelector
 			err := ctrlClient.List(context.TODO(), &machineList, &client.ListOptions{Raw: &opts, Namespace: ns})
 			return &machineList, err
 		},
 		WatchFunc: func(opts metav1.ListOptions) (watch.Interface, error) {
-			machineList := clusterv1.MachineList{}
+			machineList := clusterv1alpha4.MachineList{}
 			opts.FieldSelector = fieldSelector
 			return ctrlClient.Watch(context.TODO(), &machineList, &client.ListOptions{Raw: &opts, Namespace: ns})
 		},
 	}
 }
 
-func wrapMachineFunc(f func(*clusterv1.Machine) *metric.Family) func(interface{}) *metric.Family {
+func wrapMachineFunc(f func(*clusterv1alpha4.Machine) *metric.Family) func(interface{}) *metric.Family {
 	return func(obj interface{}) *metric.Family {
-		machine := obj.(*clusterv1.Machine)
+		machine := obj.(*clusterv1alpha4.Machine)
 
 		metricFamily := f(machine)
 

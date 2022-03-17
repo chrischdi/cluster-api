@@ -24,37 +24,41 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/kube-state-metrics/v2/pkg/customresource"
 	"k8s.io/kube-state-metrics/v2/pkg/metric"
 	generator "k8s.io/kube-state-metrics/v2/pkg/metric_generator"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha4"
-	"sigs.k8s.io/cluster-api/util/annotations"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	clusterv1alpha4 "sigs.k8s.io/cluster-api/api/v1alpha4"
+	"sigs.k8s.io/cluster-api/util/annotations"
 )
 
 // +kubebuilder:rbac:groups=cluster.x-k8s.io,resources=machinedeployments,verbs=get;list;watch
 
 var descMachineDeploymentLabelsDefaultLabels = []string{"namespace", "machinedeployment", "uid"}
 
-type MachineDeploymentFactory struct {
-	*ControllerRuntimeClientFactory
+type machineDeploymentFactory struct {
+	*controllerRuntimeClientFactory
 }
 
-func (f *MachineDeploymentFactory) Name() string {
+var _ customresource.RegistryFactory = &machineDeploymentFactory{}
+
+func (f *machineDeploymentFactory) Name() string {
 	return "machinedeployments"
 }
 
-func (f *MachineDeploymentFactory) ExpectedType() interface{} {
-	return &clusterv1.MachineDeployment{}
+func (f *machineDeploymentFactory) ExpectedType() interface{} {
+	return &clusterv1alpha4.MachineDeployment{}
 }
 
-func (f *MachineDeploymentFactory) MetricFamilyGenerators(allowAnnotationsList, allowLabelsList []string) []generator.FamilyGenerator {
+func (f *machineDeploymentFactory) MetricFamilyGenerators(allowAnnotationsList, allowLabelsList []string) []generator.FamilyGenerator {
 	return []generator.FamilyGenerator{
 		*generator.NewFamilyGenerator(
 			"capi_machinedeployment_labels",
 			"Kubernetes labels converted to Prometheus labels.",
 			metric.Gauge,
 			"",
-			wrapMachineDeploymentFunc(func(md *clusterv1.MachineDeployment) *metric.Family {
+			wrapMachineDeploymentFunc(func(md *clusterv1alpha4.MachineDeployment) *metric.Family {
 				labelKeys, labelValues := createLabelKeysValues(md.Labels, allowLabelsList)
 				return &metric.Family{
 					Metrics: []*metric.Metric{
@@ -72,7 +76,7 @@ func (f *MachineDeploymentFactory) MetricFamilyGenerators(allowAnnotationsList, 
 			"Unix creation timestamp",
 			metric.Gauge,
 			"",
-			wrapMachineDeploymentFunc(func(md *clusterv1.MachineDeployment) *metric.Family {
+			wrapMachineDeploymentFunc(func(md *clusterv1alpha4.MachineDeployment) *metric.Family {
 				ms := []*metric.Metric{}
 
 				if !md.CreationTimestamp.IsZero() {
@@ -93,7 +97,7 @@ func (f *MachineDeploymentFactory) MetricFamilyGenerators(allowAnnotationsList, 
 			"The machinedeployment is paused and not reconciled.",
 			metric.Gauge,
 			"",
-			wrapMachineDeploymentFunc(func(md *clusterv1.MachineDeployment) *metric.Family {
+			wrapMachineDeploymentFunc(func(md *clusterv1alpha4.MachineDeployment) *metric.Family {
 				paused := annotations.HasPausedAnnotation(md) || md.Spec.Paused
 				return &metric.Family{
 					Metrics: []*metric.Metric{
@@ -111,8 +115,8 @@ func (f *MachineDeploymentFactory) MetricFamilyGenerators(allowAnnotationsList, 
 			"The machinedeployments current phase.",
 			metric.Gauge,
 			"",
-			wrapMachineDeploymentFunc(func(md *clusterv1.MachineDeployment) *metric.Family {
-				phase := clusterv1.MachineDeploymentPhase(md.Status.Phase)
+			wrapMachineDeploymentFunc(func(md *clusterv1alpha4.MachineDeployment) *metric.Family {
+				phase := clusterv1alpha4.MachineDeploymentPhase(md.Status.Phase)
 				if phase == "" {
 					return &metric.Family{
 						Metrics: []*metric.Metric{},
@@ -123,11 +127,11 @@ func (f *MachineDeploymentFactory) MetricFamilyGenerators(allowAnnotationsList, 
 					v bool
 					n string
 				}{
-					{phase == clusterv1.MachineDeploymentPhaseScalingUp, string(clusterv1.MachineDeploymentPhaseScalingUp)},
-					{phase == clusterv1.MachineDeploymentPhaseScalingDown, string(clusterv1.MachineDeploymentPhaseScalingDown)},
-					{phase == clusterv1.MachineDeploymentPhaseRunning, string(clusterv1.MachineDeploymentPhaseRunning)},
-					{phase == clusterv1.MachineDeploymentPhaseFailed, string(clusterv1.MachineDeploymentPhaseFailed)},
-					{phase == clusterv1.MachineDeploymentPhaseUnknown, string(clusterv1.MachineDeploymentPhaseUnknown)},
+					{phase == clusterv1alpha4.MachineDeploymentPhaseScalingUp, string(clusterv1alpha4.MachineDeploymentPhaseScalingUp)},
+					{phase == clusterv1alpha4.MachineDeploymentPhaseScalingDown, string(clusterv1alpha4.MachineDeploymentPhaseScalingDown)},
+					{phase == clusterv1alpha4.MachineDeploymentPhaseRunning, string(clusterv1alpha4.MachineDeploymentPhaseRunning)},
+					{phase == clusterv1alpha4.MachineDeploymentPhaseFailed, string(clusterv1alpha4.MachineDeploymentPhaseFailed)},
+					{phase == clusterv1alpha4.MachineDeploymentPhaseUnknown, string(clusterv1alpha4.MachineDeploymentPhaseUnknown)},
 				}
 
 				ms := make([]*metric.Metric, len(phases))
@@ -150,7 +154,7 @@ func (f *MachineDeploymentFactory) MetricFamilyGenerators(allowAnnotationsList, 
 			"The number of replicas per machinedeployment.",
 			metric.Gauge,
 			"",
-			wrapMachineDeploymentFunc(func(md *clusterv1.MachineDeployment) *metric.Family {
+			wrapMachineDeploymentFunc(func(md *clusterv1alpha4.MachineDeployment) *metric.Family {
 				return &metric.Family{
 					Metrics: []*metric.Metric{
 						{
@@ -165,7 +169,7 @@ func (f *MachineDeploymentFactory) MetricFamilyGenerators(allowAnnotationsList, 
 			"The number of available replicas per machinedeployment.",
 			metric.Gauge,
 			"",
-			wrapMachineDeploymentFunc(func(md *clusterv1.MachineDeployment) *metric.Family {
+			wrapMachineDeploymentFunc(func(md *clusterv1alpha4.MachineDeployment) *metric.Family {
 				return &metric.Family{
 					Metrics: []*metric.Metric{
 						{
@@ -180,7 +184,7 @@ func (f *MachineDeploymentFactory) MetricFamilyGenerators(allowAnnotationsList, 
 			"The number of unavailable replicas per machinedeployment.",
 			metric.Gauge,
 			"",
-			wrapMachineDeploymentFunc(func(md *clusterv1.MachineDeployment) *metric.Family {
+			wrapMachineDeploymentFunc(func(md *clusterv1alpha4.MachineDeployment) *metric.Family {
 				return &metric.Family{
 					Metrics: []*metric.Metric{
 						{
@@ -195,7 +199,7 @@ func (f *MachineDeploymentFactory) MetricFamilyGenerators(allowAnnotationsList, 
 			"The number of updated replicas per machinedeployment.",
 			metric.Gauge,
 			"",
-			wrapMachineDeploymentFunc(func(md *clusterv1.MachineDeployment) *metric.Family {
+			wrapMachineDeploymentFunc(func(md *clusterv1alpha4.MachineDeployment) *metric.Family {
 				return &metric.Family{
 					Metrics: []*metric.Metric{
 						{
@@ -210,7 +214,7 @@ func (f *MachineDeploymentFactory) MetricFamilyGenerators(allowAnnotationsList, 
 			"Number of desired replicas for a machinedeployment.",
 			metric.Gauge,
 			"",
-			wrapMachineDeploymentFunc(func(md *clusterv1.MachineDeployment) *metric.Family {
+			wrapMachineDeploymentFunc(func(md *clusterv1alpha4.MachineDeployment) *metric.Family {
 				ms := []*metric.Metric{}
 
 				if md.Spec.Replicas != nil {
@@ -229,7 +233,7 @@ func (f *MachineDeploymentFactory) MetricFamilyGenerators(allowAnnotationsList, 
 			"Maximum number of replicas that can be scheduled above the desired number of replicas during a rolling update of a machinedeployment.",
 			metric.Gauge,
 			"",
-			wrapMachineDeploymentFunc(func(md *clusterv1.MachineDeployment) *metric.Family {
+			wrapMachineDeploymentFunc(func(md *clusterv1alpha4.MachineDeployment) *metric.Family {
 				if md.Spec.Strategy == nil || md.Spec.Strategy.RollingUpdate == nil || md.Spec.Replicas == nil {
 					return &metric.Family{}
 				}
@@ -253,7 +257,7 @@ func (f *MachineDeploymentFactory) MetricFamilyGenerators(allowAnnotationsList, 
 			"Maximum number of unavailable replicas during a rolling update of a machinedeployment.",
 			metric.Gauge,
 			"",
-			wrapMachineDeploymentFunc(func(md *clusterv1.MachineDeployment) *metric.Family {
+			wrapMachineDeploymentFunc(func(md *clusterv1alpha4.MachineDeployment) *metric.Family {
 				if md.Spec.Strategy == nil || md.Spec.Strategy.RollingUpdate == nil {
 					return &metric.Family{}
 				}
@@ -277,33 +281,33 @@ func (f *MachineDeploymentFactory) MetricFamilyGenerators(allowAnnotationsList, 
 			"Information about the kubeadmcontrolplane's owner.",
 			metric.Gauge,
 			"",
-			wrapMachineDeploymentFunc(func(md *clusterv1.MachineDeployment) *metric.Family {
+			wrapMachineDeploymentFunc(func(md *clusterv1alpha4.MachineDeployment) *metric.Family {
 				return getOwnerMetric(md.GetOwnerReferences())
 			}),
 		),
 	}
 }
 
-func (f *MachineDeploymentFactory) ListWatch(customResourceClient interface{}, ns string, fieldSelector string) cache.ListerWatcher {
+func (f *machineDeploymentFactory) ListWatch(customResourceClient interface{}, ns string, fieldSelector string) cache.ListerWatcher {
 	ctrlClient := customResourceClient.(client.WithWatch)
 	return &cache.ListWatch{
 		ListFunc: func(opts metav1.ListOptions) (runtime.Object, error) {
-			machineDeploymentList := clusterv1.MachineDeploymentList{}
+			machineDeploymentList := clusterv1alpha4.MachineDeploymentList{}
 			opts.FieldSelector = fieldSelector
 			err := ctrlClient.List(context.TODO(), &machineDeploymentList, &client.ListOptions{Raw: &opts, Namespace: ns})
 			return &machineDeploymentList, err
 		},
 		WatchFunc: func(opts metav1.ListOptions) (watch.Interface, error) {
-			machineDeploymentList := clusterv1.MachineDeploymentList{}
+			machineDeploymentList := clusterv1alpha4.MachineDeploymentList{}
 			opts.FieldSelector = fieldSelector
 			return ctrlClient.Watch(context.TODO(), &machineDeploymentList, &client.ListOptions{Raw: &opts, Namespace: ns})
 		},
 	}
 }
 
-func wrapMachineDeploymentFunc(f func(*clusterv1.MachineDeployment) *metric.Family) func(interface{}) *metric.Family {
+func wrapMachineDeploymentFunc(f func(*clusterv1alpha4.MachineDeployment) *metric.Family) func(interface{}) *metric.Family {
 	return func(obj interface{}) *metric.Family {
-		machineDeployment := obj.(*clusterv1.MachineDeployment)
+		machineDeployment := obj.(*clusterv1alpha4.MachineDeployment)
 
 		metricFamily := f(machineDeployment)
 

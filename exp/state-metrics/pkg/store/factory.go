@@ -21,37 +21,41 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/kube-state-metrics/v2/pkg/customresource"
 	"k8s.io/kube-state-metrics/v2/pkg/options"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha4"
-	controlplanev1 "sigs.k8s.io/cluster-api/controlplane/kubeadm/api/v1alpha4"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	clusterv1alpha4 "sigs.k8s.io/cluster-api/api/v1alpha4"
+	controlplanev1alpha4 "sigs.k8s.io/cluster-api/controlplane/kubeadm/api/v1alpha4"
 )
 
 var scheme = runtime.NewScheme()
 
 func init() {
-	_ = clusterv1.AddToScheme(scheme)
-	_ = controlplanev1.AddToScheme(scheme)
+	_ = clusterv1alpha4.AddToScheme(scheme)
+	_ = controlplanev1alpha4.AddToScheme(scheme)
 	// +kubebuilder:scaffold:scheme
 }
 
-type ControllerRuntimeClientFactory struct{}
+type controllerRuntimeClientFactory struct{}
 
+// Factories returns the RegistryFactories for core cluster-api CRs.
 func Factories() []customresource.RegistryFactory {
 	return []customresource.RegistryFactory{
-		&ClusterFactory{},
-		&KubeadmControlPlaneFactory{},
-		&MachineDeploymentFactory{},
-		&MachineSetFactory{},
-		&MachineFactory{},
+		&clusterFactory{},
+		&kubeadmControlPlaneFactory{},
+		&machineDeploymentFactory{},
+		&machineSetFactory{},
+		&machineFactory{},
 	}
 }
 
-func (f *ControllerRuntimeClientFactory) CreateClient(cfg *rest.Config) (interface{}, error) {
+func (f *controllerRuntimeClientFactory) CreateClient(cfg *rest.Config) (interface{}, error) {
 	return client.NewWithWatch(cfg, client.Options{
 		Scheme: scheme,
 	})
 }
 
+// DefaultResources contains the factory names which should be enabled by default.
+// This parameter is used to setup defaults for flags.
 var DefaultResources = options.ResourceSet{}
 
 func init() {

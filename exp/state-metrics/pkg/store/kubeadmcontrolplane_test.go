@@ -24,7 +24,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	generator "k8s.io/kube-state-metrics/v2/pkg/metric_generator"
 	"k8s.io/utils/pointer"
-	controlplanev1 "sigs.k8s.io/cluster-api/controlplane/kubeadm/api/v1alpha4"
+
+	controlplanev1alpha4 "sigs.k8s.io/cluster-api/controlplane/kubeadm/api/v1alpha4"
 )
 
 func TestKubeadmControlPlaneStore(t *testing.T) {
@@ -33,7 +34,7 @@ func TestKubeadmControlPlaneStore(t *testing.T) {
 
 	cases := []generateMetricsTestCase{
 		{
-			Obj: &controlplanev1.KubeadmControlPlane{
+			Obj: &controlplanev1alpha4.KubeadmControlPlane{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:              "kcp1",
 					Namespace:         "ns1",
@@ -56,7 +57,7 @@ func TestKubeadmControlPlaneStore(t *testing.T) {
 			MetricNames: []string{"capi_kubeadmcontrolplane_labels", "capi_kubeadmcontrolplane_created", "capi_kubeadmcontrolplane_owner"},
 		},
 		{
-			Obj: &controlplanev1.KubeadmControlPlane{
+			Obj: &controlplanev1alpha4.KubeadmControlPlane{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:              "kcp2",
 					Namespace:         "ns2",
@@ -64,10 +65,10 @@ func TestKubeadmControlPlaneStore(t *testing.T) {
 					ResourceVersion:   "10596",
 					UID:               types.UID("foo"),
 				},
-				Spec: controlplanev1.KubeadmControlPlaneSpec{
+				Spec: controlplanev1alpha4.KubeadmControlPlaneSpec{
 					Replicas: pointer.Int32(2),
 				},
-				Status: controlplanev1.KubeadmControlPlaneStatus{
+				Status: controlplanev1alpha4.KubeadmControlPlaneStatus{
 					Replicas:            2,
 					ReadyReplicas:       1,
 					UnavailableReplicas: 1,
@@ -94,7 +95,7 @@ func TestKubeadmControlPlaneStore(t *testing.T) {
 			MetricNames: []string{"capi_kubeadmcontrolplane_status_replicas", "capi_kubeadmcontrolplane_status_replicas_ready", "capi_kubeadmcontrolplane_status_replicas_unavailable", "capi_kubeadmcontrolplane_status_replicas_updated", "capi_kubeadmcontrolplane_spec_replicas"},
 		},
 		{
-			Obj: &controlplanev1.KubeadmControlPlane{
+			Obj: &controlplanev1alpha4.KubeadmControlPlane{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:              "kcp3",
 					Namespace:         "ns3",
@@ -102,10 +103,10 @@ func TestKubeadmControlPlaneStore(t *testing.T) {
 					ResourceVersion:   "10596",
 					UID:               types.UID("foo"),
 				},
-				Spec: controlplanev1.KubeadmControlPlaneSpec{
+				Spec: controlplanev1alpha4.KubeadmControlPlaneSpec{
 					Replicas: pointer.Int32(1),
-					RolloutStrategy: &controlplanev1.RolloutStrategy{
-						RollingUpdate: &controlplanev1.RollingUpdate{
+					RolloutStrategy: &controlplanev1alpha4.RolloutStrategy{
+						RollingUpdate: &controlplanev1alpha4.RollingUpdate{
 							MaxSurge: &intstr.IntOrString{IntVal: 1},
 						},
 					},
@@ -119,7 +120,7 @@ func TestKubeadmControlPlaneStore(t *testing.T) {
 			MetricNames: []string{"capi_kubeadmcontrolplane_spec_strategy_rollingupdate_max_surge"},
 		},
 		{
-			Obj: &controlplanev1.KubeadmControlPlane{
+			Obj: &controlplanev1alpha4.KubeadmControlPlane{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:              "kcp4",
 					Namespace:         "ns4",
@@ -127,7 +128,7 @@ func TestKubeadmControlPlaneStore(t *testing.T) {
 					ResourceVersion:   "10596",
 					UID:               types.UID("foo"),
 				},
-				Spec: controlplanev1.KubeadmControlPlaneSpec{
+				Spec: controlplanev1alpha4.KubeadmControlPlaneSpec{
 					Version: "v9.9.9",
 				},
 			},
@@ -140,7 +141,7 @@ func TestKubeadmControlPlaneStore(t *testing.T) {
 		},
 	}
 	for i, c := range cases {
-		f := KubeadmControlPlaneFactory{}
+		f := kubeadmControlPlaneFactory{}
 		c.Func = generator.ComposeMetricGenFuncs(f.MetricFamilyGenerators(nil, nil))
 		c.Headers = generator.ExtractMetricFamilyHeaders(f.MetricFamilyGenerators(nil, nil))
 		if err := c.run(); err != nil {

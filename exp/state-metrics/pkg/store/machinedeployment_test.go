@@ -24,7 +24,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	generator "k8s.io/kube-state-metrics/v2/pkg/metric_generator"
 	"k8s.io/utils/pointer"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha4"
+
+	clusterv1alpha4 "sigs.k8s.io/cluster-api/api/v1alpha4"
 )
 
 func TestMachineDeploymentStore(t *testing.T) {
@@ -33,7 +34,7 @@ func TestMachineDeploymentStore(t *testing.T) {
 
 	cases := []generateMetricsTestCase{
 		{
-			Obj: &clusterv1.MachineDeployment{
+			Obj: &clusterv1alpha4.MachineDeployment{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:              "md1",
 					Namespace:         "ns1",
@@ -63,7 +64,7 @@ func TestMachineDeploymentStore(t *testing.T) {
 			MetricNames: []string{"capi_machinedeployment_labels", "capi_machinedeployment_created", "capi_machinedeployment_owner"},
 		},
 		{
-			Obj: &clusterv1.MachineDeployment{
+			Obj: &clusterv1alpha4.MachineDeployment{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:              "md2",
 					Namespace:         "ns2",
@@ -71,8 +72,8 @@ func TestMachineDeploymentStore(t *testing.T) {
 					ResourceVersion:   "10596",
 					UID:               types.UID("foo"),
 				},
-				Status: clusterv1.MachineDeploymentStatus{
-					Phase: string(clusterv1.MachineDeploymentPhaseScalingDown),
+				Status: clusterv1alpha4.MachineDeploymentStatus{
+					Phase: string(clusterv1alpha4.MachineDeploymentPhaseScalingDown),
 				},
 			},
 			Want: `
@@ -87,7 +88,7 @@ func TestMachineDeploymentStore(t *testing.T) {
 			MetricNames: []string{"capi_machinedeployment_status_phase"},
 		},
 		{
-			Obj: &clusterv1.MachineDeployment{
+			Obj: &clusterv1alpha4.MachineDeployment{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:              "md2",
 					Namespace:         "ns2",
@@ -95,10 +96,10 @@ func TestMachineDeploymentStore(t *testing.T) {
 					ResourceVersion:   "10596",
 					UID:               types.UID("foo"),
 				},
-				Spec: clusterv1.MachineDeploymentSpec{
+				Spec: clusterv1alpha4.MachineDeploymentSpec{
 					Replicas: pointer.Int32(3),
 				},
-				Status: clusterv1.MachineDeploymentStatus{
+				Status: clusterv1alpha4.MachineDeploymentStatus{
 					Replicas:            3,
 					UpdatedReplicas:     1,
 					AvailableReplicas:   1,
@@ -126,7 +127,7 @@ func TestMachineDeploymentStore(t *testing.T) {
 			MetricNames: []string{"capi_machinedeployment_status_replicas", "capi_machinedeployment_status_replicas_available", "capi_machinedeployment_status_replicas_unavailable", "capi_machinedeployment_status_replicas_updated", "capi_machinedeployment_spec_replicas"},
 		},
 		{
-			Obj: &clusterv1.MachineDeployment{
+			Obj: &clusterv1alpha4.MachineDeployment{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:              "md3",
 					Namespace:         "ns3",
@@ -134,10 +135,10 @@ func TestMachineDeploymentStore(t *testing.T) {
 					ResourceVersion:   "10596",
 					UID:               types.UID("foo"),
 				},
-				Spec: clusterv1.MachineDeploymentSpec{
+				Spec: clusterv1alpha4.MachineDeploymentSpec{
 					Replicas: pointer.Int32Ptr(1),
-					Strategy: &clusterv1.MachineDeploymentStrategy{
-						RollingUpdate: &clusterv1.MachineRollingUpdateDeployment{
+					Strategy: &clusterv1alpha4.MachineDeploymentStrategy{
+						RollingUpdate: &clusterv1alpha4.MachineRollingUpdateDeployment{
 							MaxSurge:       &intstr.IntOrString{IntVal: 1},
 							MaxUnavailable: &intstr.IntOrString{IntVal: 1},
 						},
@@ -156,7 +157,7 @@ func TestMachineDeploymentStore(t *testing.T) {
 		},
 	}
 	for i, c := range cases {
-		f := MachineDeploymentFactory{}
+		f := machineDeploymentFactory{}
 		c.Func = generator.ComposeMetricGenFuncs(f.MetricFamilyGenerators(nil, nil))
 		c.Headers = generator.ExtractMetricFamilyHeaders(f.MetricFamilyGenerators(nil, nil))
 		if err := c.run(); err != nil {
