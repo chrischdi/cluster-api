@@ -28,7 +28,7 @@ import (
 	generator "k8s.io/kube-state-metrics/v2/pkg/metric_generator"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	clusterv1alpha4 "sigs.k8s.io/cluster-api/api/v1alpha4"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/cluster-api/util/annotations"
 )
 
@@ -47,7 +47,7 @@ func (f *machineSetFactory) Name() string {
 }
 
 func (f *machineSetFactory) ExpectedType() interface{} {
-	return &clusterv1alpha4.MachineSet{}
+	return &clusterv1.MachineSet{}
 }
 
 func (f *machineSetFactory) MetricFamilyGenerators(allowAnnotationsList, allowLabelsList []string) []generator.FamilyGenerator {
@@ -57,7 +57,7 @@ func (f *machineSetFactory) MetricFamilyGenerators(allowAnnotationsList, allowLa
 			"Kubernetes labels converted to Prometheus labels.",
 			metric.Gauge,
 			"",
-			wrapMachineSetFunc(func(m *clusterv1alpha4.MachineSet) *metric.Family {
+			wrapMachineSetFunc(func(m *clusterv1.MachineSet) *metric.Family {
 				labelKeys, labelValues := createLabelKeysValues(m.Labels, allowLabelsList)
 				return &metric.Family{
 					Metrics: []*metric.Metric{
@@ -75,7 +75,7 @@ func (f *machineSetFactory) MetricFamilyGenerators(allowAnnotationsList, allowLa
 			"Unix creation timestamp",
 			metric.Gauge,
 			"",
-			wrapMachineSetFunc(func(m *clusterv1alpha4.MachineSet) *metric.Family {
+			wrapMachineSetFunc(func(m *clusterv1.MachineSet) *metric.Family {
 				ms := []*metric.Metric{}
 
 				if !m.CreationTimestamp.IsZero() {
@@ -96,7 +96,7 @@ func (f *machineSetFactory) MetricFamilyGenerators(allowAnnotationsList, allowLa
 			"The machineset is paused and not reconciled.",
 			metric.Gauge,
 			"",
-			wrapMachineSetFunc(func(ms *clusterv1alpha4.MachineSet) *metric.Family {
+			wrapMachineSetFunc(func(ms *clusterv1.MachineSet) *metric.Family {
 				paused := annotations.HasPaused(ms)
 				return &metric.Family{
 					Metrics: []*metric.Metric{
@@ -114,7 +114,7 @@ func (f *machineSetFactory) MetricFamilyGenerators(allowAnnotationsList, allowLa
 			"The number of replicas per machineset.",
 			metric.Gauge,
 			"",
-			wrapMachineSetFunc(func(m *clusterv1alpha4.MachineSet) *metric.Family {
+			wrapMachineSetFunc(func(m *clusterv1.MachineSet) *metric.Family {
 				return &metric.Family{
 					Metrics: []*metric.Metric{
 						{
@@ -129,7 +129,7 @@ func (f *machineSetFactory) MetricFamilyGenerators(allowAnnotationsList, allowLa
 			"The number of fully labeled replicas per machineset.",
 			metric.Gauge,
 			"",
-			wrapMachineSetFunc(func(m *clusterv1alpha4.MachineSet) *metric.Family {
+			wrapMachineSetFunc(func(m *clusterv1.MachineSet) *metric.Family {
 				return &metric.Family{
 					Metrics: []*metric.Metric{
 						{
@@ -144,7 +144,7 @@ func (f *machineSetFactory) MetricFamilyGenerators(allowAnnotationsList, allowLa
 			"The number of ready replicas per machineset.",
 			metric.Gauge,
 			"",
-			wrapMachineSetFunc(func(m *clusterv1alpha4.MachineSet) *metric.Family {
+			wrapMachineSetFunc(func(m *clusterv1.MachineSet) *metric.Family {
 				return &metric.Family{
 					Metrics: []*metric.Metric{
 						{
@@ -159,7 +159,7 @@ func (f *machineSetFactory) MetricFamilyGenerators(allowAnnotationsList, allowLa
 			"The number of available replicas per machineset.",
 			metric.Gauge,
 			"",
-			wrapMachineSetFunc(func(m *clusterv1alpha4.MachineSet) *metric.Family {
+			wrapMachineSetFunc(func(m *clusterv1.MachineSet) *metric.Family {
 				return &metric.Family{
 					Metrics: []*metric.Metric{
 						{
@@ -174,7 +174,7 @@ func (f *machineSetFactory) MetricFamilyGenerators(allowAnnotationsList, allowLa
 			"Number of desired replicas for a machineset.",
 			metric.Gauge,
 			"",
-			wrapMachineSetFunc(func(m *clusterv1alpha4.MachineSet) *metric.Family {
+			wrapMachineSetFunc(func(m *clusterv1.MachineSet) *metric.Family {
 				ms := []*metric.Metric{}
 
 				if m.Spec.Replicas != nil {
@@ -193,7 +193,7 @@ func (f *machineSetFactory) MetricFamilyGenerators(allowAnnotationsList, allowLa
 			"Information about the machineset's owner.",
 			metric.Gauge,
 			"",
-			wrapMachineSetFunc(func(m *clusterv1alpha4.MachineSet) *metric.Family {
+			wrapMachineSetFunc(func(m *clusterv1.MachineSet) *metric.Family {
 				return getOwnerMetric(m.GetOwnerReferences())
 			}),
 		),
@@ -204,22 +204,22 @@ func (f *machineSetFactory) ListWatch(customResourceClient interface{}, ns strin
 	ctrlClient := customResourceClient.(client.WithWatch)
 	return &cache.ListWatch{
 		ListFunc: func(opts metav1.ListOptions) (runtime.Object, error) {
-			machineSetList := clusterv1alpha4.MachineSetList{}
+			machineSetList := clusterv1.MachineSetList{}
 			opts.FieldSelector = fieldSelector
 			err := ctrlClient.List(context.TODO(), &machineSetList, &client.ListOptions{Raw: &opts, Namespace: ns})
 			return &machineSetList, err
 		},
 		WatchFunc: func(opts metav1.ListOptions) (watch.Interface, error) {
-			machineSetList := clusterv1alpha4.MachineSetList{}
+			machineSetList := clusterv1.MachineSetList{}
 			opts.FieldSelector = fieldSelector
 			return ctrlClient.Watch(context.TODO(), &machineSetList, &client.ListOptions{Raw: &opts, Namespace: ns})
 		},
 	}
 }
 
-func wrapMachineSetFunc(f func(*clusterv1alpha4.MachineSet) *metric.Family) func(interface{}) *metric.Family {
+func wrapMachineSetFunc(f func(*clusterv1.MachineSet) *metric.Family) func(interface{}) *metric.Family {
 	return func(obj interface{}) *metric.Family {
-		machineSet := obj.(*clusterv1alpha4.MachineSet)
+		machineSet := obj.(*clusterv1.MachineSet)
 
 		metricFamily := f(machineSet)
 

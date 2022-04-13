@@ -23,15 +23,15 @@ import (
 	"k8s.io/kube-state-metrics/v2/pkg/options"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	clusterv1alpha4 "sigs.k8s.io/cluster-api/api/v1alpha4"
-	controlplanev1alpha4 "sigs.k8s.io/cluster-api/controlplane/kubeadm/api/v1alpha4"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	controlplanev1 "sigs.k8s.io/cluster-api/controlplane/kubeadm/api/v1beta1"
 )
 
 var scheme = runtime.NewScheme()
 
 func init() {
-	_ = clusterv1alpha4.AddToScheme(scheme)
-	_ = controlplanev1alpha4.AddToScheme(scheme)
+	_ = clusterv1.AddToScheme(scheme)
+	_ = controlplanev1.AddToScheme(scheme)
 	// +kubebuilder:scaffold:scheme
 }
 

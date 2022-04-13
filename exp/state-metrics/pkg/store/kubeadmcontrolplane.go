@@ -29,7 +29,7 @@ import (
 	generator "k8s.io/kube-state-metrics/v2/pkg/metric_generator"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	controlplanev1alpha4 "sigs.k8s.io/cluster-api/controlplane/kubeadm/api/v1alpha4"
+	controlplanev1 "sigs.k8s.io/cluster-api/controlplane/kubeadm/api/v1beta1"
 	"sigs.k8s.io/cluster-api/util/annotations"
 )
 
@@ -48,7 +48,7 @@ func (f *kubeadmControlPlaneFactory) Name() string {
 }
 
 func (f *kubeadmControlPlaneFactory) ExpectedType() interface{} {
-	return &controlplanev1alpha4.KubeadmControlPlane{}
+	return &controlplanev1.KubeadmControlPlane{}
 }
 
 func (f *kubeadmControlPlaneFactory) MetricFamilyGenerators(allowAnnotationsList, allowLabelsList []string) []generator.FamilyGenerator {
@@ -58,7 +58,7 @@ func (f *kubeadmControlPlaneFactory) MetricFamilyGenerators(allowAnnotationsList
 			"Kubernetes labels converted to Prometheus labels.",
 			metric.Gauge,
 			"",
-			wrapKubeadmControlPlaneFunc(func(kcp *controlplanev1alpha4.KubeadmControlPlane) *metric.Family {
+			wrapKubeadmControlPlaneFunc(func(kcp *controlplanev1.KubeadmControlPlane) *metric.Family {
 				labelKeys, labelValues := createLabelKeysValues(kcp.Labels, allowLabelsList)
 				return &metric.Family{
 					Metrics: []*metric.Metric{
@@ -76,7 +76,7 @@ func (f *kubeadmControlPlaneFactory) MetricFamilyGenerators(allowAnnotationsList
 			"Unix creation timestamp",
 			metric.Gauge,
 			"",
-			wrapKubeadmControlPlaneFunc(func(kcp *controlplanev1alpha4.KubeadmControlPlane) *metric.Family {
+			wrapKubeadmControlPlaneFunc(func(kcp *controlplanev1.KubeadmControlPlane) *metric.Family {
 				ms := []*metric.Metric{}
 
 				if !kcp.CreationTimestamp.IsZero() {
@@ -97,7 +97,7 @@ func (f *kubeadmControlPlaneFactory) MetricFamilyGenerators(allowAnnotationsList
 			"The kubeadmcontrolplane is paused and not reconciled.",
 			metric.Gauge,
 			"",
-			wrapKubeadmControlPlaneFunc(func(kcp *controlplanev1alpha4.KubeadmControlPlane) *metric.Family {
+			wrapKubeadmControlPlaneFunc(func(kcp *controlplanev1.KubeadmControlPlane) *metric.Family {
 				paused := annotations.HasPaused(kcp)
 				return &metric.Family{
 					Metrics: []*metric.Metric{
@@ -115,7 +115,7 @@ func (f *kubeadmControlPlaneFactory) MetricFamilyGenerators(allowAnnotationsList
 			"The current status conditions of a machine.",
 			metric.Gauge,
 			"",
-			wrapKubeadmControlPlaneFunc(func(kcp *controlplanev1alpha4.KubeadmControlPlane) *metric.Family {
+			wrapKubeadmControlPlaneFunc(func(kcp *controlplanev1.KubeadmControlPlane) *metric.Family {
 				return getConditionMetricFamily(kcp.Status.Conditions)
 			}),
 		),
@@ -124,7 +124,7 @@ func (f *kubeadmControlPlaneFactory) MetricFamilyGenerators(allowAnnotationsList
 			"The number of replicas per kubeadmcontrolplane.",
 			metric.Gauge,
 			"",
-			wrapKubeadmControlPlaneFunc(func(kcp *controlplanev1alpha4.KubeadmControlPlane) *metric.Family {
+			wrapKubeadmControlPlaneFunc(func(kcp *controlplanev1.KubeadmControlPlane) *metric.Family {
 				return &metric.Family{
 					Metrics: []*metric.Metric{
 						{
@@ -139,7 +139,7 @@ func (f *kubeadmControlPlaneFactory) MetricFamilyGenerators(allowAnnotationsList
 			"The number of ready replicas per kubeadmcontrolplane.",
 			metric.Gauge,
 			"",
-			wrapKubeadmControlPlaneFunc(func(kcp *controlplanev1alpha4.KubeadmControlPlane) *metric.Family {
+			wrapKubeadmControlPlaneFunc(func(kcp *controlplanev1.KubeadmControlPlane) *metric.Family {
 				return &metric.Family{
 					Metrics: []*metric.Metric{
 						{
@@ -154,7 +154,7 @@ func (f *kubeadmControlPlaneFactory) MetricFamilyGenerators(allowAnnotationsList
 			"The number of unavailable replicas per kubeadmcontrolplane.",
 			metric.Gauge,
 			"",
-			wrapKubeadmControlPlaneFunc(func(kcp *controlplanev1alpha4.KubeadmControlPlane) *metric.Family {
+			wrapKubeadmControlPlaneFunc(func(kcp *controlplanev1.KubeadmControlPlane) *metric.Family {
 				return &metric.Family{
 					Metrics: []*metric.Metric{
 						{
@@ -169,7 +169,7 @@ func (f *kubeadmControlPlaneFactory) MetricFamilyGenerators(allowAnnotationsList
 			"The number of updated replicas per kubeadmcontrolplane.",
 			metric.Gauge,
 			"",
-			wrapKubeadmControlPlaneFunc(func(kcp *controlplanev1alpha4.KubeadmControlPlane) *metric.Family {
+			wrapKubeadmControlPlaneFunc(func(kcp *controlplanev1.KubeadmControlPlane) *metric.Family {
 				return &metric.Family{
 					Metrics: []*metric.Metric{
 						{
@@ -184,7 +184,7 @@ func (f *kubeadmControlPlaneFactory) MetricFamilyGenerators(allowAnnotationsList
 			"Number of desired replicas for a kubeadmcontrolplane.",
 			metric.Gauge,
 			"",
-			wrapKubeadmControlPlaneFunc(func(kcp *controlplanev1alpha4.KubeadmControlPlane) *metric.Family {
+			wrapKubeadmControlPlaneFunc(func(kcp *controlplanev1.KubeadmControlPlane) *metric.Family {
 				ms := []*metric.Metric{}
 
 				if kcp.Spec.Replicas != nil {
@@ -203,7 +203,7 @@ func (f *kubeadmControlPlaneFactory) MetricFamilyGenerators(allowAnnotationsList
 			"Maximum number of replicas that can be scheduled above the desired number of replicas during a rolling update of a kubeadmcontrolplane.",
 			metric.Gauge,
 			"",
-			wrapKubeadmControlPlaneFunc(func(kcp *controlplanev1alpha4.KubeadmControlPlane) *metric.Family {
+			wrapKubeadmControlPlaneFunc(func(kcp *controlplanev1.KubeadmControlPlane) *metric.Family {
 				if kcp.Spec.RolloutStrategy == nil || kcp.Spec.RolloutStrategy.RollingUpdate == nil || kcp.Spec.Replicas == nil {
 					return &metric.Family{}
 				}
@@ -227,7 +227,7 @@ func (f *kubeadmControlPlaneFactory) MetricFamilyGenerators(allowAnnotationsList
 			"Information about the kubeadmcontrolplane's owner.",
 			metric.Gauge,
 			"",
-			wrapKubeadmControlPlaneFunc(func(kcp *controlplanev1alpha4.KubeadmControlPlane) *metric.Family {
+			wrapKubeadmControlPlaneFunc(func(kcp *controlplanev1.KubeadmControlPlane) *metric.Family {
 				return getOwnerMetric(kcp.GetOwnerReferences())
 			}),
 		),
@@ -236,7 +236,7 @@ func (f *kubeadmControlPlaneFactory) MetricFamilyGenerators(allowAnnotationsList
 			"Information about a kubeadmcontrolplane.",
 			metric.Gauge,
 			"",
-			wrapKubeadmControlPlaneFunc(func(kcp *controlplanev1alpha4.KubeadmControlPlane) *metric.Family {
+			wrapKubeadmControlPlaneFunc(func(kcp *controlplanev1.KubeadmControlPlane) *metric.Family {
 				labelKeys := []string{
 					"version",
 				}
@@ -262,22 +262,22 @@ func (f *kubeadmControlPlaneFactory) ListWatch(customResourceClient interface{},
 	ctrlClient := customResourceClient.(client.WithWatch)
 	return &cache.ListWatch{
 		ListFunc: func(opts metav1.ListOptions) (runtime.Object, error) {
-			kubeadmControlPlaneList := controlplanev1alpha4.KubeadmControlPlaneList{}
+			kubeadmControlPlaneList := controlplanev1.KubeadmControlPlaneList{}
 			opts.FieldSelector = fieldSelector
 			err := ctrlClient.List(context.TODO(), &kubeadmControlPlaneList, &client.ListOptions{Raw: &opts, Namespace: ns})
 			return &kubeadmControlPlaneList, err
 		},
 		WatchFunc: func(opts metav1.ListOptions) (watch.Interface, error) {
-			kubeadmControlPlaneList := controlplanev1alpha4.KubeadmControlPlaneList{}
+			kubeadmControlPlaneList := controlplanev1.KubeadmControlPlaneList{}
 			opts.FieldSelector = fieldSelector
 			return ctrlClient.Watch(context.TODO(), &kubeadmControlPlaneList, &client.ListOptions{Raw: &opts, Namespace: ns})
 		},
 	}
 }
 
-func wrapKubeadmControlPlaneFunc(f func(*controlplanev1alpha4.KubeadmControlPlane) *metric.Family) func(interface{}) *metric.Family {
+func wrapKubeadmControlPlaneFunc(f func(*controlplanev1.KubeadmControlPlane) *metric.Family) func(interface{}) *metric.Family {
 	return func(obj interface{}) *metric.Family {
-		kubeadmControlPlane := obj.(*controlplanev1alpha4.KubeadmControlPlane)
+		kubeadmControlPlane := obj.(*controlplanev1.KubeadmControlPlane)
 
 		metricFamily := f(kubeadmControlPlane)
 

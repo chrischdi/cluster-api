@@ -28,7 +28,7 @@ import (
 	generator "k8s.io/kube-state-metrics/v2/pkg/metric_generator"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	clusterv1alpha4 "sigs.k8s.io/cluster-api/api/v1alpha4"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/cluster-api/util/annotations"
 )
 
@@ -47,7 +47,7 @@ func (f *clusterFactory) Name() string {
 }
 
 func (f *clusterFactory) ExpectedType() interface{} {
-	return &clusterv1alpha4.Cluster{}
+	return &clusterv1.Cluster{}
 }
 
 func (f *clusterFactory) MetricFamilyGenerators(allowAnnotationsList, allowLabelsList []string) []generator.FamilyGenerator {
@@ -57,7 +57,7 @@ func (f *clusterFactory) MetricFamilyGenerators(allowAnnotationsList, allowLabel
 			"Kubernetes labels converted to Prometheus labels.",
 			metric.Gauge,
 			"",
-			wrapClusterFunc(func(c *clusterv1alpha4.Cluster) *metric.Family {
+			wrapClusterFunc(func(c *clusterv1.Cluster) *metric.Family {
 				labelKeys, labelValues := createLabelKeysValues(c.Labels, allowLabelsList)
 				return &metric.Family{
 					Metrics: []*metric.Metric{
@@ -75,7 +75,7 @@ func (f *clusterFactory) MetricFamilyGenerators(allowAnnotationsList, allowLabel
 			"Unix creation timestamp",
 			metric.Gauge,
 			"",
-			wrapClusterFunc(func(c *clusterv1alpha4.Cluster) *metric.Family {
+			wrapClusterFunc(func(c *clusterv1.Cluster) *metric.Family {
 				ms := []*metric.Metric{}
 
 				if !c.CreationTimestamp.IsZero() {
@@ -96,7 +96,7 @@ func (f *clusterFactory) MetricFamilyGenerators(allowAnnotationsList, allowLabel
 			"The cluster is paused and not reconciled.",
 			metric.Gauge,
 			"",
-			wrapClusterFunc(func(c *clusterv1alpha4.Cluster) *metric.Family {
+			wrapClusterFunc(func(c *clusterv1.Cluster) *metric.Family {
 				paused := annotations.HasPaused(c) || c.Spec.Paused
 				return &metric.Family{
 					Metrics: []*metric.Metric{
@@ -114,8 +114,8 @@ func (f *clusterFactory) MetricFamilyGenerators(allowAnnotationsList, allowLabel
 			"The clusters current phase.",
 			metric.Gauge,
 			"",
-			wrapClusterFunc(func(c *clusterv1alpha4.Cluster) *metric.Family {
-				phase := clusterv1alpha4.ClusterPhase(c.Status.Phase)
+			wrapClusterFunc(func(c *clusterv1.Cluster) *metric.Family {
+				phase := clusterv1.ClusterPhase(c.Status.Phase)
 				if phase == "" {
 					return &metric.Family{
 						Metrics: []*metric.Metric{},
@@ -126,12 +126,12 @@ func (f *clusterFactory) MetricFamilyGenerators(allowAnnotationsList, allowLabel
 					v bool
 					n string
 				}{
-					{phase == clusterv1alpha4.ClusterPhasePending, string(clusterv1alpha4.ClusterPhasePending)},
-					{phase == clusterv1alpha4.ClusterPhaseProvisioning, string(clusterv1alpha4.ClusterPhaseProvisioning)},
-					{phase == clusterv1alpha4.ClusterPhaseProvisioned, string(clusterv1alpha4.ClusterPhaseProvisioned)},
-					{phase == clusterv1alpha4.ClusterPhaseDeleting, string(clusterv1alpha4.ClusterPhaseDeleting)},
-					{phase == clusterv1alpha4.ClusterPhaseFailed, string(clusterv1alpha4.ClusterPhaseFailed)},
-					{phase == clusterv1alpha4.ClusterPhaseUnknown, string(clusterv1alpha4.ClusterPhaseUnknown)},
+					{phase == clusterv1.ClusterPhasePending, string(clusterv1.ClusterPhasePending)},
+					{phase == clusterv1.ClusterPhaseProvisioning, string(clusterv1.ClusterPhaseProvisioning)},
+					{phase == clusterv1.ClusterPhaseProvisioned, string(clusterv1.ClusterPhaseProvisioned)},
+					{phase == clusterv1.ClusterPhaseDeleting, string(clusterv1.ClusterPhaseDeleting)},
+					{phase == clusterv1.ClusterPhaseFailed, string(clusterv1.ClusterPhaseFailed)},
+					{phase == clusterv1.ClusterPhaseUnknown, string(clusterv1.ClusterPhaseUnknown)},
 				}
 
 				ms := make([]*metric.Metric, len(phases))
@@ -155,7 +155,7 @@ func (f *clusterFactory) MetricFamilyGenerators(allowAnnotationsList, allowLabel
 			"The current status conditions of a cluster.",
 			metric.Gauge,
 			"",
-			wrapClusterFunc(func(c *clusterv1alpha4.Cluster) *metric.Family {
+			wrapClusterFunc(func(c *clusterv1.Cluster) *metric.Family {
 				return getConditionMetricFamily(c.Status.Conditions)
 			}),
 		),
@@ -166,22 +166,22 @@ func (f *clusterFactory) ListWatch(customResourceClient interface{}, ns string, 
 	ctrlClient := customResourceClient.(client.WithWatch)
 	return &cache.ListWatch{
 		ListFunc: func(opts metav1.ListOptions) (runtime.Object, error) {
-			clusterList := clusterv1alpha4.ClusterList{}
+			clusterList := clusterv1.ClusterList{}
 			opts.FieldSelector = fieldSelector
 			err := ctrlClient.List(context.TODO(), &clusterList, &client.ListOptions{Raw: &opts, Namespace: ns})
 			return &clusterList, err
 		},
 		WatchFunc: func(opts metav1.ListOptions) (watch.Interface, error) {
-			clusterList := clusterv1alpha4.ClusterList{}
+			clusterList := clusterv1.ClusterList{}
 			opts.FieldSelector = fieldSelector
 			return ctrlClient.Watch(context.TODO(), &clusterList, &client.ListOptions{Raw: &opts, Namespace: ns})
 		},
 	}
 }
 
-func wrapClusterFunc(f func(*clusterv1alpha4.Cluster) *metric.Family) func(interface{}) *metric.Family {
+func wrapClusterFunc(f func(*clusterv1.Cluster) *metric.Family) func(interface{}) *metric.Family {
 	return func(obj interface{}) *metric.Family {
-		cluster := obj.(*clusterv1alpha4.Cluster)
+		cluster := obj.(*clusterv1.Cluster)
 
 		metricFamily := f(cluster)
 
