@@ -97,7 +97,7 @@ func (f *machineSetFactory) MetricFamilyGenerators(allowAnnotationsList, allowLa
 			metric.Gauge,
 			"",
 			wrapMachineSetFunc(func(ms *clusterv1alpha4.MachineSet) *metric.Family {
-				paused := annotations.HasPausedAnnotation(ms)
+				paused := annotations.HasPaused(ms)
 				return &metric.Family{
 					Metrics: []*metric.Metric{
 						{

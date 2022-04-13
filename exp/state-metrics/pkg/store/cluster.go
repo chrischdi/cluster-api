@@ -97,7 +97,7 @@ func (f *clusterFactory) MetricFamilyGenerators(allowAnnotationsList, allowLabel
 			metric.Gauge,
 			"",
 			wrapClusterFunc(func(c *clusterv1alpha4.Cluster) *metric.Family {
-				paused := annotations.HasPausedAnnotation(c) || c.Spec.Paused
+				paused := annotations.HasPaused(c) || c.Spec.Paused
 				return &metric.Family{
 					Metrics: []*metric.Metric{
 						{

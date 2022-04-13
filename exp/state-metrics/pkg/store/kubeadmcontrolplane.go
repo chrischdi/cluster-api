@@ -98,7 +98,7 @@ func (f *kubeadmControlPlaneFactory) MetricFamilyGenerators(allowAnnotationsList
 			metric.Gauge,
 			"",
 			wrapKubeadmControlPlaneFunc(func(kcp *controlplanev1alpha4.KubeadmControlPlane) *metric.Family {
-				paused := annotations.HasPausedAnnotation(kcp)
+				paused := annotations.HasPaused(kcp)
 				return &metric.Family{
 					Metrics: []*metric.Metric{
 						{

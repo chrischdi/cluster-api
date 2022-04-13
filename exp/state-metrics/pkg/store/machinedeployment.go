@@ -98,7 +98,7 @@ func (f *machineDeploymentFactory) MetricFamilyGenerators(allowAnnotationsList, 
 			metric.Gauge,
 			"",
 			wrapMachineDeploymentFunc(func(md *clusterv1alpha4.MachineDeployment) *metric.Family {
-				paused := annotations.HasPausedAnnotation(md) || md.Spec.Paused
+				paused := annotations.HasPaused(md) || md.Spec.Paused
 				return &metric.Family{
 					Metrics: []*metric.Metric{
 						{
