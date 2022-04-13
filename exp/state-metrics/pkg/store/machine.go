@@ -53,24 +53,6 @@ func (f *machineFactory) ExpectedType() interface{} {
 func (f *machineFactory) MetricFamilyGenerators(allowAnnotationsList, allowLabelsList []string) []generator.FamilyGenerator {
 	return []generator.FamilyGenerator{
 		*generator.NewFamilyGenerator(
-			"capi_machine_labels",
-			"Kubernetes labels converted to Prometheus labels.",
-			metric.Gauge,
-			"",
-			wrapMachineFunc(func(m *clusterv1.Machine) *metric.Family {
-				labelKeys, labelValues := createLabelKeysValues(m.Labels, allowLabelsList)
-				return &metric.Family{
-					Metrics: []*metric.Metric{
-						{
-							LabelKeys:   labelKeys,
-							LabelValues: labelValues,
-							Value:       1,
-						},
-					},
-				}
-			}),
-		),
-		*generator.NewFamilyGenerator(
 			"capi_machine_created",
 			"Unix creation timestamp",
 			metric.Gauge,
@@ -92,6 +74,75 @@ func (f *machineFactory) MetricFamilyGenerators(allowAnnotationsList, allowLabel
 			}),
 		),
 		*generator.NewFamilyGenerator(
+			"capi_machine_info",
+			"Information about a machine.",
+			metric.Gauge,
+			"",
+			wrapMachineFunc(func(m *clusterv1.Machine) *metric.Family {
+				labelKeys := []string{}
+				labelValues := []string{}
+
+				if m.Spec.Version != nil {
+					labelKeys = append(labelKeys, "version")
+					labelValues = append(labelValues, *m.Spec.Version)
+				}
+				if m.Spec.ProviderID != nil {
+					labelKeys = append(labelKeys, "provider_id")
+					labelValues = append(labelValues, *m.Spec.ProviderID)
+				}
+				if m.Spec.FailureDomain != nil {
+					labelKeys = append(labelKeys, "failure_domain")
+					labelValues = append(labelValues, *m.Spec.FailureDomain)
+				}
+
+				internalIP := ""
+				for _, address := range m.Status.Addresses {
+					if address.Type == "InternalIP" {
+						internalIP = address.Address
+					}
+				}
+				labelKeys = append(labelKeys, "internal_ip")
+				labelValues = append(labelValues, internalIP)
+
+				return &metric.Family{
+					Metrics: []*metric.Metric{
+						{
+							LabelKeys:   labelKeys,
+							LabelValues: labelValues,
+							Value:       1,
+						},
+					},
+				}
+			}),
+		),
+		*generator.NewFamilyGenerator(
+			"capi_machine_labels",
+			"Kubernetes labels converted to Prometheus labels.",
+			metric.Gauge,
+			"",
+			wrapMachineFunc(func(m *clusterv1.Machine) *metric.Family {
+				labelKeys, labelValues := createLabelKeysValues(m.Labels, allowLabelsList)
+				return &metric.Family{
+					Metrics: []*metric.Metric{
+						{
+							LabelKeys:   labelKeys,
+							LabelValues: labelValues,
+							Value:       1,
+						},
+					},
+				}
+			}),
+		),
+		*generator.NewFamilyGenerator(
+			"capi_machine_owner",
+			"Information about the machine's owner.",
+			metric.Gauge,
+			"",
+			wrapMachineFunc(func(m *clusterv1.Machine) *metric.Family {
+				return getOwnerMetric(m.GetOwnerReferences())
+			}),
+		),
+		*generator.NewFamilyGenerator(
 			"capi_machine_paused",
 			"The machine is paused and not reconciled.",
 			metric.Gauge,
@@ -104,6 +155,43 @@ func (f *machineFactory) MetricFamilyGenerators(allowAnnotationsList, allowLabel
 							LabelKeys:   []string{},
 							LabelValues: []string{},
 							Value:       boolFloat64(paused),
+						},
+					},
+				}
+			}),
+		),
+		*generator.NewFamilyGenerator(
+			"capi_machine_status_condition",
+			"The current status conditions of a machine.",
+			metric.Gauge,
+			"",
+			wrapMachineFunc(func(m *clusterv1.Machine) *metric.Family {
+				return getConditionMetricFamily(m.Status.Conditions)
+			}),
+		),
+		*generator.NewFamilyGenerator(
+			"capi_machine_status_noderef",
+			"Information about the machine's node reference.",
+			metric.Gauge,
+			"",
+			wrapMachineFunc(func(m *clusterv1.Machine) *metric.Family {
+				nodeRef := m.Status.NodeRef
+
+				if nodeRef == nil {
+					return &metric.Family{
+						Metrics: []*metric.Metric{},
+					}
+				}
+				return &metric.Family{
+					Metrics: []*metric.Metric{
+						{
+							LabelKeys: []string{
+								"name",
+							},
+							LabelValues: []string{
+								nodeRef.Name,
+							},
+							Value: 1,
 						},
 					},
 				}
@@ -148,94 +236,6 @@ func (f *machineFactory) MetricFamilyGenerators(allowAnnotationsList, allowLabel
 
 				return &metric.Family{
 					Metrics: ms,
-				}
-			}),
-		),
-		*generator.NewFamilyGenerator(
-			"capi_machine_status_condition",
-			"The current status conditions of a machine.",
-			metric.Gauge,
-			"",
-			wrapMachineFunc(func(m *clusterv1.Machine) *metric.Family {
-				return getConditionMetricFamily(m.Status.Conditions)
-			}),
-		),
-		*generator.NewFamilyGenerator(
-			"capi_machine_owner",
-			"Information about the machine's owner.",
-			metric.Gauge,
-			"",
-			wrapMachineFunc(func(m *clusterv1.Machine) *metric.Family {
-				return getOwnerMetric(m.GetOwnerReferences())
-			}),
-		),
-		*generator.NewFamilyGenerator(
-			"capi_machine_status_noderef",
-			"Information about the machine's node reference.",
-			metric.Gauge,
-			"",
-			wrapMachineFunc(func(m *clusterv1.Machine) *metric.Family {
-				nodeRef := m.Status.NodeRef
-
-				if nodeRef == nil {
-					return &metric.Family{
-						Metrics: []*metric.Metric{},
-					}
-				}
-				return &metric.Family{
-					Metrics: []*metric.Metric{
-						{
-							LabelKeys: []string{
-								"name",
-							},
-							LabelValues: []string{
-								nodeRef.Name,
-							},
-							Value: 1,
-						},
-					},
-				}
-			}),
-		),
-		*generator.NewFamilyGenerator(
-			"capi_machine_info",
-			"Information about a machine.",
-			metric.Gauge,
-			"",
-			wrapMachineFunc(func(m *clusterv1.Machine) *metric.Family {
-				labelKeys := []string{}
-				labelValues := []string{}
-
-				if m.Spec.Version != nil {
-					labelKeys = append(labelKeys, "version")
-					labelValues = append(labelValues, *m.Spec.Version)
-				}
-				if m.Spec.ProviderID != nil {
-					labelKeys = append(labelKeys, "provider_id")
-					labelValues = append(labelValues, *m.Spec.ProviderID)
-				}
-				if m.Spec.FailureDomain != nil {
-					labelKeys = append(labelKeys, "failure_domain")
-					labelValues = append(labelValues, *m.Spec.FailureDomain)
-				}
-
-				internalIP := ""
-				for _, address := range m.Status.Addresses {
-					if address.Type == "InternalIP" {
-						internalIP = address.Address
-					}
-				}
-				labelKeys = append(labelKeys, "internal_ip")
-				labelValues = append(labelValues, internalIP)
-
-				return &metric.Family{
-					Metrics: []*metric.Metric{
-						{
-							LabelKeys:   labelKeys,
-							LabelValues: labelValues,
-							Value:       1,
-						},
-					},
 				}
 			}),
 		),

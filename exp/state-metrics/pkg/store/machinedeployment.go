@@ -54,24 +54,6 @@ func (f *machineDeploymentFactory) ExpectedType() interface{} {
 func (f *machineDeploymentFactory) MetricFamilyGenerators(allowAnnotationsList, allowLabelsList []string) []generator.FamilyGenerator {
 	return []generator.FamilyGenerator{
 		*generator.NewFamilyGenerator(
-			"capi_machinedeployment_labels",
-			"Kubernetes labels converted to Prometheus labels.",
-			metric.Gauge,
-			"",
-			wrapMachineDeploymentFunc(func(md *clusterv1.MachineDeployment) *metric.Family {
-				labelKeys, labelValues := createLabelKeysValues(md.Labels, allowLabelsList)
-				return &metric.Family{
-					Metrics: []*metric.Metric{
-						{
-							LabelKeys:   labelKeys,
-							LabelValues: labelValues,
-							Value:       1,
-						},
-					},
-				}
-			}),
-		),
-		*generator.NewFamilyGenerator(
 			"capi_machinedeployment_created",
 			"Unix creation timestamp",
 			metric.Gauge,
@@ -93,6 +75,33 @@ func (f *machineDeploymentFactory) MetricFamilyGenerators(allowAnnotationsList, 
 			}),
 		),
 		*generator.NewFamilyGenerator(
+			"capi_machinedeployment_labels",
+			"Kubernetes labels converted to Prometheus labels.",
+			metric.Gauge,
+			"",
+			wrapMachineDeploymentFunc(func(md *clusterv1.MachineDeployment) *metric.Family {
+				labelKeys, labelValues := createLabelKeysValues(md.Labels, allowLabelsList)
+				return &metric.Family{
+					Metrics: []*metric.Metric{
+						{
+							LabelKeys:   labelKeys,
+							LabelValues: labelValues,
+							Value:       1,
+						},
+					},
+				}
+			}),
+		),
+		*generator.NewFamilyGenerator(
+			"capi_machinedeployment_owner",
+			"Information about the kubeadmcontrolplane's owner.",
+			metric.Gauge,
+			"",
+			wrapMachineDeploymentFunc(func(md *clusterv1.MachineDeployment) *metric.Family {
+				return getOwnerMetric(md.GetOwnerReferences())
+			}),
+		),
+		*generator.NewFamilyGenerator(
 			"capi_machinedeployment_paused",
 			"The machinedeployment is paused and not reconciled.",
 			metric.Gauge,
@@ -108,6 +117,82 @@ func (f *machineDeploymentFactory) MetricFamilyGenerators(allowAnnotationsList, 
 						},
 					},
 				}
+			}),
+		),
+		*generator.NewFamilyGenerator(
+			"capi_machinedeployment_spec_replicas",
+			"Number of desired replicas for a machinedeployment.",
+			metric.Gauge,
+			"",
+			wrapMachineDeploymentFunc(func(md *clusterv1.MachineDeployment) *metric.Family {
+				ms := []*metric.Metric{}
+
+				if md.Spec.Replicas != nil {
+					ms = append(ms, &metric.Metric{
+						Value: float64(*md.Spec.Replicas),
+					})
+				}
+
+				return &metric.Family{
+					Metrics: ms,
+				}
+			}),
+		),
+		*generator.NewFamilyGenerator(
+			"capi_machinedeployment_spec_strategy_rollingupdate_max_surge",
+			"Maximum number of replicas that can be scheduled above the desired number of replicas during a rolling update of a machinedeployment.",
+			metric.Gauge,
+			"",
+			wrapMachineDeploymentFunc(func(md *clusterv1.MachineDeployment) *metric.Family {
+				if md.Spec.Strategy == nil || md.Spec.Strategy.RollingUpdate == nil || md.Spec.Replicas == nil {
+					return &metric.Family{}
+				}
+
+				maxSurge, err := intstr.GetScaledValueFromIntOrPercent(md.Spec.Strategy.RollingUpdate.MaxSurge, int(*md.Spec.Replicas), true)
+				if err != nil {
+					panic(err)
+				}
+
+				return &metric.Family{
+					Metrics: []*metric.Metric{
+						{
+							Value: float64(maxSurge),
+						},
+					},
+				}
+			}),
+		),
+		*generator.NewFamilyGenerator(
+			"capi_machinedeployment_spec_strategy_rollingupdate_max_unavailable",
+			"Maximum number of unavailable replicas during a rolling update of a machinedeployment.",
+			metric.Gauge,
+			"",
+			wrapMachineDeploymentFunc(func(md *clusterv1.MachineDeployment) *metric.Family {
+				if md.Spec.Strategy == nil || md.Spec.Strategy.RollingUpdate == nil {
+					return &metric.Family{}
+				}
+
+				maxUnavailable, err := intstr.GetScaledValueFromIntOrPercent(md.Spec.Strategy.RollingUpdate.MaxUnavailable, int(*md.Spec.Replicas), false)
+				if err != nil {
+					panic(err)
+				}
+
+				return &metric.Family{
+					Metrics: []*metric.Metric{
+						{
+							Value: float64(maxUnavailable),
+						},
+					},
+				}
+			}),
+		),
+		*generator.NewFamilyGenerator(
+			"capi_machinedeployment_status_condition",
+			"The current status conditions of a machinedeployment.",
+			metric.Gauge,
+			"",
+			wrapMachineDeploymentFunc(func(md *clusterv1.MachineDeployment) *metric.Family {
+				return getConditionMetricFamily(md.Status.Conditions)
 			}),
 		),
 		*generator.NewFamilyGenerator(
@@ -207,91 +292,6 @@ func (f *machineDeploymentFactory) MetricFamilyGenerators(allowAnnotationsList, 
 						},
 					},
 				}
-			}),
-		),
-		*generator.NewFamilyGenerator(
-			"capi_machinedeployment_spec_replicas",
-			"Number of desired replicas for a machinedeployment.",
-			metric.Gauge,
-			"",
-			wrapMachineDeploymentFunc(func(md *clusterv1.MachineDeployment) *metric.Family {
-				ms := []*metric.Metric{}
-
-				if md.Spec.Replicas != nil {
-					ms = append(ms, &metric.Metric{
-						Value: float64(*md.Spec.Replicas),
-					})
-				}
-
-				return &metric.Family{
-					Metrics: ms,
-				}
-			}),
-		),
-		*generator.NewFamilyGenerator(
-			"capi_machinedeployment_spec_strategy_rollingupdate_max_surge",
-			"Maximum number of replicas that can be scheduled above the desired number of replicas during a rolling update of a machinedeployment.",
-			metric.Gauge,
-			"",
-			wrapMachineDeploymentFunc(func(md *clusterv1.MachineDeployment) *metric.Family {
-				if md.Spec.Strategy == nil || md.Spec.Strategy.RollingUpdate == nil || md.Spec.Replicas == nil {
-					return &metric.Family{}
-				}
-
-				maxSurge, err := intstr.GetScaledValueFromIntOrPercent(md.Spec.Strategy.RollingUpdate.MaxSurge, int(*md.Spec.Replicas), true)
-				if err != nil {
-					panic(err)
-				}
-
-				return &metric.Family{
-					Metrics: []*metric.Metric{
-						{
-							Value: float64(maxSurge),
-						},
-					},
-				}
-			}),
-		),
-		*generator.NewFamilyGenerator(
-			"capi_machinedeployment_spec_strategy_rollingupdate_max_unavailable",
-			"Maximum number of unavailable replicas during a rolling update of a machinedeployment.",
-			metric.Gauge,
-			"",
-			wrapMachineDeploymentFunc(func(md *clusterv1.MachineDeployment) *metric.Family {
-				if md.Spec.Strategy == nil || md.Spec.Strategy.RollingUpdate == nil {
-					return &metric.Family{}
-				}
-
-				maxUnavailable, err := intstr.GetScaledValueFromIntOrPercent(md.Spec.Strategy.RollingUpdate.MaxUnavailable, int(*md.Spec.Replicas), false)
-				if err != nil {
-					panic(err)
-				}
-
-				return &metric.Family{
-					Metrics: []*metric.Metric{
-						{
-							Value: float64(maxUnavailable),
-						},
-					},
-				}
-			}),
-		),
-		*generator.NewFamilyGenerator(
-			"capi_machinedeployment_status_condition",
-			"The current status conditions of a machinedeployment.",
-			metric.Gauge,
-			"",
-			wrapMachineDeploymentFunc(func(md *clusterv1.MachineDeployment) *metric.Family {
-				return getConditionMetricFamily(md.Status.Conditions)
-			}),
-		),
-		*generator.NewFamilyGenerator(
-			"capi_machinedeployment_owner",
-			"Information about the kubeadmcontrolplane's owner.",
-			metric.Gauge,
-			"",
-			wrapMachineDeploymentFunc(func(md *clusterv1.MachineDeployment) *metric.Family {
-				return getOwnerMetric(md.GetOwnerReferences())
 			}),
 		),
 	}

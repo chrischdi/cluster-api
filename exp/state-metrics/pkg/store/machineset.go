@@ -53,6 +53,25 @@ func (f *machineSetFactory) ExpectedType() interface{} {
 func (f *machineSetFactory) MetricFamilyGenerators(allowAnnotationsList, allowLabelsList []string) []generator.FamilyGenerator {
 	return []generator.FamilyGenerator{
 		*generator.NewFamilyGenerator(
+			"capi_machineset_created",
+			"Unix creation timestamp",
+			metric.Gauge,
+			"",
+			wrapMachineSetFunc(func(m *clusterv1.MachineSet) *metric.Family {
+				ms := []*metric.Metric{}
+				if !m.CreationTimestamp.IsZero() {
+					ms = append(ms, &metric.Metric{
+						LabelKeys:   []string{},
+						LabelValues: []string{},
+						Value:       float64(m.CreationTimestamp.Unix()),
+					})
+				}
+				return &metric.Family{
+					Metrics: ms,
+				}
+			}),
+		),
+		*generator.NewFamilyGenerator(
 			"capi_machineset_labels",
 			"Kubernetes labels converted to Prometheus labels.",
 			metric.Gauge,
@@ -71,24 +90,12 @@ func (f *machineSetFactory) MetricFamilyGenerators(allowAnnotationsList, allowLa
 			}),
 		),
 		*generator.NewFamilyGenerator(
-			"capi_machineset_created",
-			"Unix creation timestamp",
+			"capi_machineset_owner",
+			"Information about the machineset's owner.",
 			metric.Gauge,
 			"",
 			wrapMachineSetFunc(func(m *clusterv1.MachineSet) *metric.Family {
-				ms := []*metric.Metric{}
-
-				if !m.CreationTimestamp.IsZero() {
-					ms = append(ms, &metric.Metric{
-						LabelKeys:   []string{},
-						LabelValues: []string{},
-						Value:       float64(m.CreationTimestamp.Unix()),
-					})
-				}
-
-				return &metric.Family{
-					Metrics: ms,
-				}
+				return getOwnerMetric(m.GetOwnerReferences())
 			}),
 		),
 		*generator.NewFamilyGenerator(
@@ -110,20 +117,49 @@ func (f *machineSetFactory) MetricFamilyGenerators(allowAnnotationsList, allowLa
 			}),
 		),
 		*generator.NewFamilyGenerator(
-			"capi_machineset_status_replicas",
-			"The number of replicas per machineset.",
+			"capi_machineset_spec_replicas",
+			"Number of desired replicas for a machineset.",
+			metric.Gauge,
+			"",
+			wrapMachineSetFunc(func(m *clusterv1.MachineSet) *metric.Family {
+				ms := []*metric.Metric{}
+
+				if m.Spec.Replicas != nil {
+					ms = append(ms, &metric.Metric{
+						Value: float64(*m.Spec.Replicas),
+					})
+				}
+
+				return &metric.Family{
+					Metrics: ms,
+				}
+			}),
+		),
+		*generator.NewFamilyGenerator(
+			"capi_machineset_status_available_replicas",
+			"The number of available replicas per machineset.",
 			metric.Gauge,
 			"",
 			wrapMachineSetFunc(func(m *clusterv1.MachineSet) *metric.Family {
 				return &metric.Family{
 					Metrics: []*metric.Metric{
 						{
-							Value: float64(m.Status.Replicas),
+							Value: float64(m.Status.AvailableReplicas),
 						},
 					},
 				}
 			}),
 		),
+		*generator.NewFamilyGenerator(
+			"capi_machineset_status_condition",
+			"The current status conditions of a machineset.",
+			metric.Gauge,
+			"",
+			wrapMachineSetFunc(func(m *clusterv1.MachineSet) *metric.Family {
+				return getConditionMetricFamily(m.Status.Conditions)
+			}),
+		),
+
 		*generator.NewFamilyGenerator(
 			"capi_machineset_status_fully_labeled_replicas",
 			"The number of fully labeled replicas per machineset.",
@@ -155,55 +191,18 @@ func (f *machineSetFactory) MetricFamilyGenerators(allowAnnotationsList, allowLa
 			}),
 		),
 		*generator.NewFamilyGenerator(
-			"capi_machineset_status_available_replicas",
-			"The number of available replicas per machineset.",
+			"capi_machineset_status_replicas",
+			"The number of replicas per machineset.",
 			metric.Gauge,
 			"",
 			wrapMachineSetFunc(func(m *clusterv1.MachineSet) *metric.Family {
 				return &metric.Family{
 					Metrics: []*metric.Metric{
 						{
-							Value: float64(m.Status.AvailableReplicas),
+							Value: float64(m.Status.Replicas),
 						},
 					},
 				}
-			}),
-		),
-		*generator.NewFamilyGenerator(
-			"capi_machineset_status_condition",
-			"The current status conditions of a machineset.",
-			metric.Gauge,
-			"",
-			wrapMachineSetFunc(func(m *clusterv1.MachineSet) *metric.Family {
-				return getConditionMetricFamily(m.Status.Conditions)
-			}),
-		),
-		*generator.NewFamilyGenerator(
-			"capi_machineset_spec_replicas",
-			"Number of desired replicas for a machineset.",
-			metric.Gauge,
-			"",
-			wrapMachineSetFunc(func(m *clusterv1.MachineSet) *metric.Family {
-				ms := []*metric.Metric{}
-
-				if m.Spec.Replicas != nil {
-					ms = append(ms, &metric.Metric{
-						Value: float64(*m.Spec.Replicas),
-					})
-				}
-
-				return &metric.Family{
-					Metrics: ms,
-				}
-			}),
-		),
-		*generator.NewFamilyGenerator(
-			"capi_machineset_owner",
-			"Information about the machineset's owner.",
-			metric.Gauge,
-			"",
-			wrapMachineSetFunc(func(m *clusterv1.MachineSet) *metric.Family {
-				return getOwnerMetric(m.GetOwnerReferences())
 			}),
 		),
 	}

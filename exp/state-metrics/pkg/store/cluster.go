@@ -53,24 +53,6 @@ func (f *clusterFactory) ExpectedType() interface{} {
 func (f *clusterFactory) MetricFamilyGenerators(allowAnnotationsList, allowLabelsList []string) []generator.FamilyGenerator {
 	return []generator.FamilyGenerator{
 		*generator.NewFamilyGenerator(
-			"capi_cluster_labels",
-			"Kubernetes labels converted to Prometheus labels.",
-			metric.Gauge,
-			"",
-			wrapClusterFunc(func(c *clusterv1.Cluster) *metric.Family {
-				labelKeys, labelValues := createLabelKeysValues(c.Labels, allowLabelsList)
-				return &metric.Family{
-					Metrics: []*metric.Metric{
-						{
-							LabelKeys:   labelKeys,
-							LabelValues: labelValues,
-							Value:       1,
-						},
-					},
-				}
-			}),
-		),
-		*generator.NewFamilyGenerator(
 			"capi_cluster_created",
 			"Unix creation timestamp",
 			metric.Gauge,
@@ -92,6 +74,24 @@ func (f *clusterFactory) MetricFamilyGenerators(allowAnnotationsList, allowLabel
 			}),
 		),
 		*generator.NewFamilyGenerator(
+			"capi_cluster_labels",
+			"Kubernetes labels converted to Prometheus labels.",
+			metric.Gauge,
+			"",
+			wrapClusterFunc(func(c *clusterv1.Cluster) *metric.Family {
+				labelKeys, labelValues := createLabelKeysValues(c.Labels, allowLabelsList)
+				return &metric.Family{
+					Metrics: []*metric.Metric{
+						{
+							LabelKeys:   labelKeys,
+							LabelValues: labelValues,
+							Value:       1,
+						},
+					},
+				}
+			}),
+		),
+		*generator.NewFamilyGenerator(
 			"capi_cluster_paused",
 			"The cluster is paused and not reconciled.",
 			metric.Gauge,
@@ -107,6 +107,15 @@ func (f *clusterFactory) MetricFamilyGenerators(allowAnnotationsList, allowLabel
 						},
 					},
 				}
+			}),
+		),
+		*generator.NewFamilyGenerator(
+			"capi_cluster_status_condition",
+			"The current status conditions of a cluster.",
+			metric.Gauge,
+			"",
+			wrapClusterFunc(func(c *clusterv1.Cluster) *metric.Family {
+				return getConditionMetricFamily(c.Status.Conditions)
 			}),
 		),
 		*generator.NewFamilyGenerator(
@@ -147,16 +156,6 @@ func (f *clusterFactory) MetricFamilyGenerators(allowAnnotationsList, allowLabel
 				return &metric.Family{
 					Metrics: ms,
 				}
-			}),
-		),
-
-		*generator.NewFamilyGenerator(
-			"capi_cluster_status_condition",
-			"The current status conditions of a cluster.",
-			metric.Gauge,
-			"",
-			wrapClusterFunc(func(c *clusterv1.Cluster) *metric.Family {
-				return getConditionMetricFamily(c.Status.Conditions)
 			}),
 		),
 	}

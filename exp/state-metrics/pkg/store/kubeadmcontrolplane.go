@@ -54,24 +54,6 @@ func (f *kubeadmControlPlaneFactory) ExpectedType() interface{} {
 func (f *kubeadmControlPlaneFactory) MetricFamilyGenerators(allowAnnotationsList, allowLabelsList []string) []generator.FamilyGenerator {
 	return []generator.FamilyGenerator{
 		*generator.NewFamilyGenerator(
-			"capi_kubeadmcontrolplane_labels",
-			"Kubernetes labels converted to Prometheus labels.",
-			metric.Gauge,
-			"",
-			wrapKubeadmControlPlaneFunc(func(kcp *controlplanev1.KubeadmControlPlane) *metric.Family {
-				labelKeys, labelValues := createLabelKeysValues(kcp.Labels, allowLabelsList)
-				return &metric.Family{
-					Metrics: []*metric.Metric{
-						{
-							LabelKeys:   labelKeys,
-							LabelValues: labelValues,
-							Value:       1,
-						},
-					},
-				}
-			}),
-		),
-		*generator.NewFamilyGenerator(
 			"capi_kubeadmcontrolplane_created",
 			"Unix creation timestamp",
 			metric.Gauge,
@@ -93,6 +75,57 @@ func (f *kubeadmControlPlaneFactory) MetricFamilyGenerators(allowAnnotationsList
 			}),
 		),
 		*generator.NewFamilyGenerator(
+			"capi_kubeadmcontrolplane_info",
+			"Information about a kubeadmcontrolplane.",
+			metric.Gauge,
+			"",
+			wrapKubeadmControlPlaneFunc(func(kcp *controlplanev1.KubeadmControlPlane) *metric.Family {
+				labelKeys := []string{
+					"version",
+				}
+				labelValues := []string{
+					kcp.Spec.Version,
+				}
+
+				return &metric.Family{
+					Metrics: []*metric.Metric{
+						{
+							LabelKeys:   labelKeys,
+							LabelValues: labelValues,
+							Value:       1,
+						},
+					},
+				}
+			}),
+		),
+		*generator.NewFamilyGenerator(
+			"capi_kubeadmcontrolplane_labels",
+			"Kubernetes labels converted to Prometheus labels.",
+			metric.Gauge,
+			"",
+			wrapKubeadmControlPlaneFunc(func(kcp *controlplanev1.KubeadmControlPlane) *metric.Family {
+				labelKeys, labelValues := createLabelKeysValues(kcp.Labels, allowLabelsList)
+				return &metric.Family{
+					Metrics: []*metric.Metric{
+						{
+							LabelKeys:   labelKeys,
+							LabelValues: labelValues,
+							Value:       1,
+						},
+					},
+				}
+			}),
+		),
+		*generator.NewFamilyGenerator(
+			"capi_kubeadmcontrolplane_owner",
+			"Information about the kubeadmcontrolplane's owner.",
+			metric.Gauge,
+			"",
+			wrapKubeadmControlPlaneFunc(func(kcp *controlplanev1.KubeadmControlPlane) *metric.Family {
+				return getOwnerMetric(kcp.GetOwnerReferences())
+			}),
+		),
+		*generator.NewFamilyGenerator(
 			"capi_kubeadmcontrolplane_paused",
 			"The kubeadmcontrolplane is paused and not reconciled.",
 			metric.Gauge,
@@ -105,6 +138,49 @@ func (f *kubeadmControlPlaneFactory) MetricFamilyGenerators(allowAnnotationsList
 							LabelKeys:   []string{},
 							LabelValues: []string{},
 							Value:       boolFloat64(paused),
+						},
+					},
+				}
+			}),
+		),
+		*generator.NewFamilyGenerator(
+			"capi_kubeadmcontrolplane_spec_replicas",
+			"Number of desired replicas for a kubeadmcontrolplane.",
+			metric.Gauge,
+			"",
+			wrapKubeadmControlPlaneFunc(func(kcp *controlplanev1.KubeadmControlPlane) *metric.Family {
+				ms := []*metric.Metric{}
+
+				if kcp.Spec.Replicas != nil {
+					ms = append(ms, &metric.Metric{
+						Value: float64(*kcp.Spec.Replicas),
+					})
+				}
+
+				return &metric.Family{
+					Metrics: ms,
+				}
+			}),
+		),
+		*generator.NewFamilyGenerator(
+			"capi_kubeadmcontrolplane_spec_strategy_rollingupdate_max_surge",
+			"Maximum number of replicas that can be scheduled above the desired number of replicas during a rolling update of a kubeadmcontrolplane.",
+			metric.Gauge,
+			"",
+			wrapKubeadmControlPlaneFunc(func(kcp *controlplanev1.KubeadmControlPlane) *metric.Family {
+				if kcp.Spec.RolloutStrategy == nil || kcp.Spec.RolloutStrategy.RollingUpdate == nil || kcp.Spec.Replicas == nil {
+					return &metric.Family{}
+				}
+
+				maxSurge, err := intstr.GetScaledValueFromIntOrPercent(kcp.Spec.RolloutStrategy.RollingUpdate.MaxSurge, int(*kcp.Spec.Replicas), true)
+				if err != nil {
+					panic(err)
+				}
+
+				return &metric.Family{
+					Metrics: []*metric.Metric{
+						{
+							Value: float64(maxSurge),
 						},
 					},
 				}
@@ -174,82 +250,6 @@ func (f *kubeadmControlPlaneFactory) MetricFamilyGenerators(allowAnnotationsList
 					Metrics: []*metric.Metric{
 						{
 							Value: float64(kcp.Status.UpdatedReplicas),
-						},
-					},
-				}
-			}),
-		),
-		*generator.NewFamilyGenerator(
-			"capi_kubeadmcontrolplane_spec_replicas",
-			"Number of desired replicas for a kubeadmcontrolplane.",
-			metric.Gauge,
-			"",
-			wrapKubeadmControlPlaneFunc(func(kcp *controlplanev1.KubeadmControlPlane) *metric.Family {
-				ms := []*metric.Metric{}
-
-				if kcp.Spec.Replicas != nil {
-					ms = append(ms, &metric.Metric{
-						Value: float64(*kcp.Spec.Replicas),
-					})
-				}
-
-				return &metric.Family{
-					Metrics: ms,
-				}
-			}),
-		),
-		*generator.NewFamilyGenerator(
-			"capi_kubeadmcontrolplane_spec_strategy_rollingupdate_max_surge",
-			"Maximum number of replicas that can be scheduled above the desired number of replicas during a rolling update of a kubeadmcontrolplane.",
-			metric.Gauge,
-			"",
-			wrapKubeadmControlPlaneFunc(func(kcp *controlplanev1.KubeadmControlPlane) *metric.Family {
-				if kcp.Spec.RolloutStrategy == nil || kcp.Spec.RolloutStrategy.RollingUpdate == nil || kcp.Spec.Replicas == nil {
-					return &metric.Family{}
-				}
-
-				maxSurge, err := intstr.GetScaledValueFromIntOrPercent(kcp.Spec.RolloutStrategy.RollingUpdate.MaxSurge, int(*kcp.Spec.Replicas), true)
-				if err != nil {
-					panic(err)
-				}
-
-				return &metric.Family{
-					Metrics: []*metric.Metric{
-						{
-							Value: float64(maxSurge),
-						},
-					},
-				}
-			}),
-		),
-		*generator.NewFamilyGenerator(
-			"capi_kubeadmcontrolplane_owner",
-			"Information about the kubeadmcontrolplane's owner.",
-			metric.Gauge,
-			"",
-			wrapKubeadmControlPlaneFunc(func(kcp *controlplanev1.KubeadmControlPlane) *metric.Family {
-				return getOwnerMetric(kcp.GetOwnerReferences())
-			}),
-		),
-		*generator.NewFamilyGenerator(
-			"capi_kubeadmcontrolplane_info",
-			"Information about a kubeadmcontrolplane.",
-			metric.Gauge,
-			"",
-			wrapKubeadmControlPlaneFunc(func(kcp *controlplanev1.KubeadmControlPlane) *metric.Family {
-				labelKeys := []string{
-					"version",
-				}
-				labelValues := []string{
-					kcp.Spec.Version,
-				}
-
-				return &metric.Family{
-					Metrics: []*metric.Metric{
-						{
-							LabelKeys:   labelKeys,
-							LabelValues: labelValues,
-							Value:       1,
 						},
 					},
 				}
