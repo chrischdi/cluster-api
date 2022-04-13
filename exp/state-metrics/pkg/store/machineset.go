@@ -170,6 +170,15 @@ func (f *machineSetFactory) MetricFamilyGenerators(allowAnnotationsList, allowLa
 			}),
 		),
 		*generator.NewFamilyGenerator(
+			"capi_machineset_status_condition",
+			"The current status conditions of a machineset.",
+			metric.Gauge,
+			"",
+			wrapMachineSetFunc(func(m *clusterv1.MachineSet) *metric.Family {
+				return getConditionMetricFamily(m.Status.Conditions)
+			}),
+		),
+		*generator.NewFamilyGenerator(
 			"capi_machineset_spec_replicas",
 			"Number of desired replicas for a machineset.",
 			metric.Gauge,

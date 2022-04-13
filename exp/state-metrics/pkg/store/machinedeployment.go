@@ -277,6 +277,15 @@ func (f *machineDeploymentFactory) MetricFamilyGenerators(allowAnnotationsList, 
 			}),
 		),
 		*generator.NewFamilyGenerator(
+			"capi_machinedeployment_status_condition",
+			"The current status conditions of a machinedeployment.",
+			metric.Gauge,
+			"",
+			wrapMachineDeploymentFunc(func(md *clusterv1.MachineDeployment) *metric.Family {
+				return getConditionMetricFamily(md.Status.Conditions)
+			}),
+		),
+		*generator.NewFamilyGenerator(
 			"capi_machinedeployment_owner",
 			"Information about the kubeadmcontrolplane's owner.",
 			metric.Gauge,
