@@ -47,6 +47,19 @@ type DockerClusterSpec struct {
 	// LoadBalancer allows defining configurations for the cluster load balancer.
 	// +optional
 	LoadBalancer DockerLoadBalancer `json:"loadBalancer,omitempty"`
+
+	// Foos provides foos.
+	//
+	// +optional
+	// +listType=map
+	// +listMapKey=capi
+	Foos []Foo `json:"foos,omitempty"`
+}
+
+// Foo is the Foo.
+type Foo struct {
+	Capi    string  `json:"capi"`
+	NotCapi *string `json:"notCapi,omitempty"`
 }
 
 // DockerLoadBalancer allows defining configurations for the cluster load balancer.
