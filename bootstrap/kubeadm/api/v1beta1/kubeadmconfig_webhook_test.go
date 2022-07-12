@@ -17,21 +17,25 @@ limitations under the License.
 package v1beta1
 
 import (
+	"context"
 	"testing"
 
 	. "github.com/onsi/gomega"
+	admissionv1 "k8s.io/api/admission/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilfeature "k8s.io/component-base/featuregate/testing"
 	"k8s.io/utils/pointer"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	"sigs.k8s.io/cluster-api/feature"
-	utildefaulting "sigs.k8s.io/cluster-api/util/defaulting"
+	"sigs.k8s.io/cluster-api/internal/webhooks/util"
 )
 
 func TestKubeadmConfigDefault(t *testing.T) {
 	defer utilfeature.SetFeatureGateDuringTest(t, feature.Gates, feature.ClusterTopology, true)()
 
 	g := NewWithT(t)
+	ctx := admission.NewContextWithRequest(context.Background(), admission.Request{AdmissionRequest: admissionv1.AdmissionRequest{DryRun: pointer.Bool(true)}})
 
 	kubeadmConfig := &KubeadmConfig{
 		ObjectMeta: metav1.ObjectMeta{
@@ -41,9 +45,10 @@ func TestKubeadmConfigDefault(t *testing.T) {
 	}
 	updateDefaultingKubeadmConfig := kubeadmConfig.DeepCopy()
 	updateDefaultingKubeadmConfig.Spec.Verbosity = pointer.Int32Ptr(4)
-	t.Run("for KubeadmConfig", utildefaulting.DefaultValidateTest(updateDefaultingKubeadmConfig))
+	webhook := &KubeadmConfigWebhook{}
+	t.Run("for KubeadmConfig", util.CustomDefaultValidateTest(ctx, updateDefaultingKubeadmConfig, webhook))
 
-	kubeadmConfig.Default()
+	g.Expect(webhook.Default(ctx, kubeadmConfig)).To(Succeed())
 
 	g.Expect(kubeadmConfig.Spec.Format).To(Equal(CloudConfig))
 
@@ -55,18 +60,20 @@ func TestKubeadmConfigDefault(t *testing.T) {
 			Format: Ignition,
 		},
 	}
-	ignitionKubeadmConfig.Default()
+	g.Expect(webhook.Default(ctx, ignitionKubeadmConfig)).To(Succeed())
 	g.Expect(ignitionKubeadmConfig.Spec.Format).To(Equal(Ignition))
 }
 
 func TestKubeadmConfigValidate(t *testing.T) {
 	cases := map[string]struct {
-		in                    *KubeadmConfig
+		new                   *KubeadmConfig
+		old                   *KubeadmConfig
 		enableIgnitionFeature bool
-		expectErr             bool
+		expectCreateErr       bool
+		expectUpdateErr       bool
 	}{
 		"valid content": {
-			in: &KubeadmConfig{
+			new: &KubeadmConfig{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "baz",
 					Namespace: metav1.NamespaceDefault,
@@ -81,7 +88,7 @@ func TestKubeadmConfigValidate(t *testing.T) {
 			},
 		},
 		"valid contentFrom": {
-			in: &KubeadmConfig{
+			new: &KubeadmConfig{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "baz",
 					Namespace: metav1.NamespaceDefault,
@@ -101,7 +108,7 @@ func TestKubeadmConfigValidate(t *testing.T) {
 			},
 		},
 		"invalid content and contentFrom": {
-			in: &KubeadmConfig{
+			new: &KubeadmConfig{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "baz",
 					Namespace: metav1.NamespaceDefault,
@@ -115,10 +122,11 @@ func TestKubeadmConfigValidate(t *testing.T) {
 					},
 				},
 			},
-			expectErr: true,
+			expectCreateErr: true,
+			expectUpdateErr: true,
 		},
 		"invalid contentFrom without name": {
-			in: &KubeadmConfig{
+			new: &KubeadmConfig{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "baz",
 					Namespace: metav1.NamespaceDefault,
@@ -136,10 +144,11 @@ func TestKubeadmConfigValidate(t *testing.T) {
 					},
 				},
 			},
-			expectErr: true,
+			expectCreateErr: true,
+			expectUpdateErr: true,
 		},
 		"invalid contentFrom without key": {
-			in: &KubeadmConfig{
+			new: &KubeadmConfig{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "baz",
 					Namespace: metav1.NamespaceDefault,
@@ -157,10 +166,11 @@ func TestKubeadmConfigValidate(t *testing.T) {
 					},
 				},
 			},
-			expectErr: true,
+			expectCreateErr: true,
+			expectUpdateErr: true,
 		},
 		"invalid with duplicate file path": {
-			in: &KubeadmConfig{
+			new: &KubeadmConfig{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "baz",
 					Namespace: metav1.NamespaceDefault,
@@ -176,10 +186,11 @@ func TestKubeadmConfigValidate(t *testing.T) {
 					},
 				},
 			},
-			expectErr: true,
+			expectCreateErr: true,
+			expectUpdateErr: true,
 		},
 		"valid passwd": {
-			in: &KubeadmConfig{
+			new: &KubeadmConfig{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "baz",
 					Namespace: metav1.NamespaceDefault,
@@ -194,7 +205,7 @@ func TestKubeadmConfigValidate(t *testing.T) {
 			},
 		},
 		"valid passwdFrom": {
-			in: &KubeadmConfig{
+			new: &KubeadmConfig{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "baz",
 					Namespace: metav1.NamespaceDefault,
@@ -214,7 +225,7 @@ func TestKubeadmConfigValidate(t *testing.T) {
 			},
 		},
 		"invalid passwd and passwdFrom": {
-			in: &KubeadmConfig{
+			new: &KubeadmConfig{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "baz",
 					Namespace: metav1.NamespaceDefault,
@@ -228,10 +239,11 @@ func TestKubeadmConfigValidate(t *testing.T) {
 					},
 				},
 			},
-			expectErr: true,
+			expectCreateErr: true,
+			expectUpdateErr: true,
 		},
 		"invalid passwdFrom without name": {
-			in: &KubeadmConfig{
+			new: &KubeadmConfig{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "baz",
 					Namespace: metav1.NamespaceDefault,
@@ -249,10 +261,11 @@ func TestKubeadmConfigValidate(t *testing.T) {
 					},
 				},
 			},
-			expectErr: true,
+			expectCreateErr: true,
+			expectUpdateErr: true,
 		},
 		"invalid passwdFrom without key": {
-			in: &KubeadmConfig{
+			new: &KubeadmConfig{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "baz",
 					Namespace: metav1.NamespaceDefault,
@@ -270,11 +283,12 @@ func TestKubeadmConfigValidate(t *testing.T) {
 					},
 				},
 			},
-			expectErr: true,
+			expectCreateErr: true,
+			expectUpdateErr: true,
 		},
 		"Ignition field is set, format is not Ignition": {
 			enableIgnitionFeature: true,
-			in: &KubeadmConfig{
+			new: &KubeadmConfig{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "baz",
 					Namespace: "default",
@@ -283,11 +297,12 @@ func TestKubeadmConfigValidate(t *testing.T) {
 					Ignition: &IgnitionSpec{},
 				},
 			},
-			expectErr: true,
+			expectCreateErr: true,
+			expectUpdateErr: true,
 		},
 		"Ignition field is not set, format is Ignition": {
 			enableIgnitionFeature: true,
-			in: &KubeadmConfig{
+			new: &KubeadmConfig{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "baz",
 					Namespace: "default",
@@ -299,7 +314,7 @@ func TestKubeadmConfigValidate(t *testing.T) {
 		},
 		"format is Ignition, user is inactive": {
 			enableIgnitionFeature: true,
-			in: &KubeadmConfig{
+			new: &KubeadmConfig{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "baz",
 					Namespace: "default",
@@ -313,11 +328,12 @@ func TestKubeadmConfigValidate(t *testing.T) {
 					},
 				},
 			},
-			expectErr: true,
+			expectCreateErr: true,
+			expectUpdateErr: true,
 		},
 		"format is Ignition, non-GPT partition configured": {
 			enableIgnitionFeature: true,
-			in: &KubeadmConfig{
+			new: &KubeadmConfig{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "baz",
 					Namespace: "default",
@@ -333,11 +349,12 @@ func TestKubeadmConfigValidate(t *testing.T) {
 					},
 				},
 			},
-			expectErr: true,
+			expectCreateErr: true,
+			expectUpdateErr: true,
 		},
 		"format is Ignition, experimental retry join is set": {
 			enableIgnitionFeature: true,
-			in: &KubeadmConfig{
+			new: &KubeadmConfig{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "baz",
 					Namespace: "default",
@@ -347,10 +364,11 @@ func TestKubeadmConfigValidate(t *testing.T) {
 					UseExperimentalRetryJoin: true,
 				},
 			},
-			expectErr: true,
+			expectCreateErr: true,
+			expectUpdateErr: true,
 		},
 		"feature gate disabled, format is Ignition": {
-			in: &KubeadmConfig{
+			new: &KubeadmConfig{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "baz",
 					Namespace: "default",
@@ -359,10 +377,11 @@ func TestKubeadmConfigValidate(t *testing.T) {
 					Format: Ignition,
 				},
 			},
-			expectErr: true,
+			expectCreateErr: true,
+			expectUpdateErr: true,
 		},
 		"feature gate disabled, Ignition field is set": {
-			in: &KubeadmConfig{
+			new: &KubeadmConfig{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "baz",
 					Namespace: "default",
@@ -374,11 +393,12 @@ func TestKubeadmConfigValidate(t *testing.T) {
 					},
 				},
 			},
-			expectErr: true,
+			expectCreateErr: true,
+			expectUpdateErr: true,
 		},
 		"replaceFS specified with Ignition": {
 			enableIgnitionFeature: true,
-			in: &KubeadmConfig{
+			new: &KubeadmConfig{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "baz",
 					Namespace: "default",
@@ -394,11 +414,12 @@ func TestKubeadmConfigValidate(t *testing.T) {
 					},
 				},
 			},
-			expectErr: true,
+			expectCreateErr: true,
+			expectUpdateErr: true,
 		},
 		"filesystem partition specified with Ignition": {
 			enableIgnitionFeature: true,
-			in: &KubeadmConfig{
+			new: &KubeadmConfig{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "baz",
 					Namespace: "default",
@@ -414,11 +435,12 @@ func TestKubeadmConfigValidate(t *testing.T) {
 					},
 				},
 			},
-			expectErr: true,
+			expectCreateErr: true,
+			expectUpdateErr: true,
 		},
 		"file encoding gzip specified with Ignition": {
 			enableIgnitionFeature: true,
-			in: &KubeadmConfig{
+			new: &KubeadmConfig{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "baz",
 					Namespace: "default",
@@ -432,11 +454,12 @@ func TestKubeadmConfigValidate(t *testing.T) {
 					},
 				},
 			},
-			expectErr: true,
+			expectCreateErr: true,
+			expectUpdateErr: true,
 		},
 		"file encoding gzip+base64 specified with Ignition": {
 			enableIgnitionFeature: true,
-			in: &KubeadmConfig{
+			new: &KubeadmConfig{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "baz",
 					Namespace: "default",
@@ -450,7 +473,25 @@ func TestKubeadmConfigValidate(t *testing.T) {
 					},
 				},
 			},
-			expectErr: true,
+			expectCreateErr: true,
+			expectUpdateErr: true,
+		},
+		"immutable spec": {
+			new: &KubeadmConfig{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "baz",
+					Namespace: metav1.NamespaceDefault,
+				},
+				Spec: KubeadmConfigSpec{
+					Files: []File{
+						{
+							Content: "foo",
+						},
+					},
+				},
+			},
+			old:             &KubeadmConfig{},
+			expectUpdateErr: true,
 		},
 	}
 
@@ -462,12 +503,21 @@ func TestKubeadmConfigValidate(t *testing.T) {
 				defer utilfeature.SetFeatureGateDuringTest(t, feature.Gates, feature.KubeadmBootstrapFormatIgnition, true)()
 			}
 			g := NewWithT(t)
-			if tt.expectErr {
-				g.Expect(tt.in.ValidateCreate()).NotTo(Succeed())
-				g.Expect(tt.in.ValidateUpdate(nil)).NotTo(Succeed())
+			ctx := admission.NewContextWithRequest(context.Background(), admission.Request{AdmissionRequest: admissionv1.AdmissionRequest{DryRun: pointer.Bool(true)}})
+			webhook := &KubeadmConfigWebhook{}
+			oldRaw := tt.old
+			if oldRaw == nil {
+				oldRaw = tt.new.DeepCopy()
+			}
+			if tt.expectCreateErr {
+				g.Expect(webhook.ValidateCreate(ctx, tt.new)).NotTo(Succeed())
 			} else {
-				g.Expect(tt.in.ValidateCreate()).To(Succeed())
-				g.Expect(tt.in.ValidateUpdate(nil)).To(Succeed())
+				g.Expect(webhook.ValidateCreate(ctx, tt.new)).To(Succeed())
+			}
+			if tt.expectUpdateErr {
+				g.Expect(webhook.ValidateUpdate(ctx, oldRaw, tt.new)).NotTo(Succeed())
+			} else {
+				g.Expect(webhook.ValidateUpdate(ctx, oldRaw, tt.new)).To(Succeed())
 			}
 		})
 	}

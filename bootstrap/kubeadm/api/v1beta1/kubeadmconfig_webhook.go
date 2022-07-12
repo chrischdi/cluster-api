@@ -17,16 +17,22 @@ limitations under the License.
 package v1beta1
 
 import (
+	"context"
 	"fmt"
+	"reflect"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	"sigs.k8s.io/cluster-api/feature"
+	"sigs.k8s.io/cluster-api/util/topology"
 )
+
+const kubeadmConfigImmutableMsg = "KubeadmConfig spec field is immutable. Please create a new resource instead."
 
 var (
 	cannotUseWithIgnition                            = fmt.Sprintf("not supported when spec.format is set to %q", Ignition)
@@ -41,16 +47,27 @@ var (
 func (c *KubeadmConfig) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(c).
+		WithDefaulter(&KubeadmConfigWebhook{}).
+		WithValidator(&KubeadmConfigWebhook{}).
 		Complete()
 }
 
 // +kubebuilder:webhook:verbs=create;update,path=/mutate-bootstrap-cluster-x-k8s-io-v1beta1-kubeadmconfig,mutating=true,failurePolicy=fail,groups=bootstrap.cluster.x-k8s.io,resources=kubeadmconfigs,versions=v1beta1,name=default.kubeadmconfig.bootstrap.cluster.x-k8s.io,sideEffects=None,admissionReviewVersions=v1;v1beta1
 
-var _ webhook.Defaulter = &KubeadmConfig{}
+// KubeadmConfigWebhook implements a custom validation webhook for KubeadmConfig.
+// +kubebuilder:object:generate=false
+type KubeadmConfigWebhook struct{}
+
+var _ webhook.CustomDefaulter = &KubeadmConfigWebhook{}
 
 // Default implements webhook.Defaulter so a webhook will be registered for the type.
-func (c *KubeadmConfig) Default() {
-	DefaultKubeadmConfigSpec(&c.Spec)
+func (*KubeadmConfigWebhook) Default(_ context.Context, obj runtime.Object) error {
+	in, ok := obj.(*KubeadmConfig)
+	if !ok {
+		return apierrors.NewBadRequest(fmt.Sprintf("expected a KubeadmConfig but got a %T", obj))
+	}
+	DefaultKubeadmConfigSpec(&in.Spec)
+	return nil
 }
 
 // DefaultKubeadmConfigSpec defaults a KubeadmConfigSpec.
@@ -62,31 +79,64 @@ func DefaultKubeadmConfigSpec(r *KubeadmConfigSpec) {
 
 // +kubebuilder:webhook:verbs=create;update,path=/validate-bootstrap-cluster-x-k8s-io-v1beta1-kubeadmconfig,mutating=false,failurePolicy=fail,matchPolicy=Equivalent,groups=bootstrap.cluster.x-k8s.io,resources=kubeadmconfigs,versions=v1beta1,name=validation.kubeadmconfig.bootstrap.cluster.x-k8s.io,sideEffects=None,admissionReviewVersions=v1;v1beta1
 
-var _ webhook.Validator = &KubeadmConfig{}
+var _ webhook.CustomValidator = &KubeadmConfigWebhook{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type.
-func (c *KubeadmConfig) ValidateCreate() error {
-	return c.Spec.validate(c.Name)
-}
+func (*KubeadmConfigWebhook) ValidateCreate(_ context.Context, newRaw runtime.Object) error {
+	newObj, ok := newRaw.(*KubeadmConfig)
+	if !ok {
+		return apierrors.NewBadRequest(fmt.Sprintf("expected a KubeadmConfig but got a %T", newRaw))
+	}
 
-// ValidateUpdate implements webhook.Validator so a webhook will be registered for the type.
-func (c *KubeadmConfig) ValidateUpdate(old runtime.Object) error {
-	return c.Spec.validate(c.Name)
-}
-
-// ValidateDelete implements webhook.Validator so a webhook will be registered for the type.
-func (c *KubeadmConfig) ValidateDelete() error {
-	return nil
-}
-
-func (c *KubeadmConfigSpec) validate(name string) error {
-	allErrs := c.Validate(field.NewPath("spec"))
+	var allErrs field.ErrorList
+	allErrs = append(allErrs, newObj.Spec.validate(newObj.Name)...)
 
 	if len(allErrs) == 0 {
 		return nil
 	}
 
-	return apierrors.NewInvalid(GroupVersion.WithKind("KubeadmConfig").GroupKind(), name, allErrs)
+	return apierrors.NewInvalid(GroupVersion.WithKind("KubeadmConfig").GroupKind(), newObj.Name, allErrs)
+}
+
+// ValidateUpdate implements webhook.Validator so a webhook will be registered for the type.
+func (*KubeadmConfigWebhook) ValidateUpdate(ctx context.Context, oldRaw runtime.Object, newRaw runtime.Object) error {
+	newObj, ok := newRaw.(*KubeadmConfig)
+	if !ok {
+		return apierrors.NewBadRequest(fmt.Sprintf("expected a KubeadmConfig but got a %T", newRaw))
+	}
+	oldObj, ok := oldRaw.(*KubeadmConfig)
+	if !ok {
+		return apierrors.NewBadRequest(fmt.Sprintf("expected a KubeadmConfig but got a %T", oldRaw))
+	}
+
+	req, err := admission.RequestFromContext(ctx)
+	if err != nil {
+		return apierrors.NewBadRequest(fmt.Sprintf("expected a admission.Request inside context: %v", err))
+	}
+
+	var allErrs field.ErrorList
+
+	allErrs = append(allErrs, newObj.Spec.validate(newObj.Name)...)
+
+	if !topology.ShouldSkipImmutabilityChecks(req, newObj) &&
+		!reflect.DeepEqual(newObj.Spec, oldObj.Spec) {
+		allErrs = append(allErrs, field.Invalid(field.NewPath("spec"), newObj, kubeadmConfigImmutableMsg))
+	}
+
+	if len(allErrs) == 0 {
+		return nil
+	}
+
+	return apierrors.NewInvalid(GroupVersion.WithKind("KubeadmConfig").GroupKind(), newObj.Name, allErrs)
+}
+
+// ValidateDelete implements webhook.Validator so a webhook will be registered for the type.
+func (*KubeadmConfigWebhook) ValidateDelete(_ context.Context, _ runtime.Object) error {
+	return nil
+}
+
+func (c *KubeadmConfigSpec) validate(name string) field.ErrorList {
+	return c.Validate(field.NewPath("spec"))
 }
 
 // Validate ensures the KubeadmConfigSpec is valid.

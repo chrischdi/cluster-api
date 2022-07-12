@@ -17,19 +17,23 @@ limitations under the License.
 package v1beta1_test
 
 import (
+	"context"
 	"testing"
 
 	. "github.com/onsi/gomega"
+	admissionv1 "k8s.io/api/admission/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
 
 	bootstrapv1 "sigs.k8s.io/cluster-api/bootstrap/kubeadm/api/v1beta1"
-	utildefaulting "sigs.k8s.io/cluster-api/util/defaulting"
+	"sigs.k8s.io/cluster-api/internal/webhooks/util"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
 func TestKubeadmConfigTemplateDefault(t *testing.T) {
 	g := NewWithT(t)
 
+	ctx := admission.NewContextWithRequest(context.Background(), admission.Request{AdmissionRequest: admissionv1.AdmissionRequest{DryRun: pointer.Bool(true)}})
 	kubeadmConfigTemplate := &bootstrapv1.KubeadmConfigTemplate{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "foo",
@@ -37,29 +41,65 @@ func TestKubeadmConfigTemplateDefault(t *testing.T) {
 	}
 	updateDefaultingKubeadmConfigTemplate := kubeadmConfigTemplate.DeepCopy()
 	updateDefaultingKubeadmConfigTemplate.Spec.Template.Spec.Verbosity = pointer.Int32Ptr(4)
-	t.Run("for KubeadmConfigTemplate", utildefaulting.DefaultValidateTest(updateDefaultingKubeadmConfigTemplate))
+	webhook := &bootstrapv1.KubeadmConfigTemplateWebhook{}
+	t.Run("for KubeadmConfigTemplate", util.CustomDefaultValidateTest(ctx, updateDefaultingKubeadmConfigTemplate, webhook))
 
-	kubeadmConfigTemplate.Default()
+	g.Expect(webhook.Default(ctx, kubeadmConfigTemplate)).To(Succeed())
 
 	g.Expect(kubeadmConfigTemplate.Spec.Template.Spec.Format).To(Equal(bootstrapv1.CloudConfig))
 }
 
 func TestKubeadmConfigTemplateValidation(t *testing.T) {
 	cases := map[string]struct {
-		in *bootstrapv1.KubeadmConfigTemplate
+		new             *bootstrapv1.KubeadmConfigTemplate
+		old             *bootstrapv1.KubeadmConfigTemplate
+		expectUpdateErr bool
 	}{
 		"valid configuration": {
-			in: &bootstrapv1.KubeadmConfigTemplate{
+			new: &bootstrapv1.KubeadmConfigTemplate{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "baz",
 					Namespace: "default",
 				},
 				Spec: bootstrapv1.KubeadmConfigTemplateSpec{
 					Template: bootstrapv1.KubeadmConfigTemplateResource{
-						Spec: bootstrapv1.KubeadmConfigSpec{},
+						Spec: bootstrapv1.KubeadmConfigSpec{
+							PreKubeadmCommands: []string{"foo"},
+						},
 					},
 				},
 			},
+			old: &bootstrapv1.KubeadmConfigTemplate{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "baz",
+					Namespace: "default",
+				},
+				Spec: bootstrapv1.KubeadmConfigTemplateSpec{
+					Template: bootstrapv1.KubeadmConfigTemplateResource{
+						Spec: bootstrapv1.KubeadmConfigSpec{
+							PreKubeadmCommands: []string{"foo"},
+						},
+					},
+				},
+			},
+			expectUpdateErr: false,
+		},
+		"immutable spec.template.spec": {
+			new: &bootstrapv1.KubeadmConfigTemplate{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "baz",
+					Namespace: "default",
+				},
+				Spec: bootstrapv1.KubeadmConfigTemplateSpec{
+					Template: bootstrapv1.KubeadmConfigTemplateResource{
+						Spec: bootstrapv1.KubeadmConfigSpec{
+							PreKubeadmCommands: []string{"foo"},
+						},
+					},
+				},
+			},
+			old:             &bootstrapv1.KubeadmConfigTemplate{},
+			expectUpdateErr: true,
 		},
 	}
 
@@ -68,8 +108,14 @@ func TestKubeadmConfigTemplateValidation(t *testing.T) {
 
 		t.Run(name, func(t *testing.T) {
 			g := NewWithT(t)
-			g.Expect(tt.in.ValidateCreate()).To(Succeed())
-			g.Expect(tt.in.ValidateUpdate(nil)).To(Succeed())
+			ctx := admission.NewContextWithRequest(context.Background(), admission.Request{AdmissionRequest: admissionv1.AdmissionRequest{DryRun: pointer.Bool(true)}})
+			webhook := &bootstrapv1.KubeadmConfigTemplateWebhook{}
+			g.Expect(webhook.ValidateCreate(ctx, tt.new)).To(Succeed())
+			if tt.expectUpdateErr {
+				g.Expect(webhook.ValidateUpdate(ctx, tt.old, tt.new)).NotTo(Succeed())
+			} else {
+				g.Expect(webhook.ValidateUpdate(ctx, tt.old, tt.new)).To(Succeed())
+			}
 		})
 	}
 }
