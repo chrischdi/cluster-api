@@ -10,3 +10,10 @@ spec:
       # Change the value of image field below to your controller image URL
       - image: gcr.io/k8s-staging-cluster-api/capd-manager:main
         name: manager
+        volumeMounts:
+          - name: socket-dir
+            mountPath: /var/run/containerd/containerd.sock
+      volumes:
+        - name: socket-dir
+          hostPath:
+            path: /var/run/containerd/containerd.sock
