@@ -73,13 +73,13 @@ func TestKubeadmControlPlaneConversion(t *testing.T) {
 				InitConfiguration: &upstreamv1beta1.InitConfiguration{
 					NodeRegistration: upstreamv1beta1.NodeRegistrationOptions{
 						Name:      "foo",
-						CRISocket: "unix:///var/run/containerd/containerd.sock",
+						CRISocket: "unix:///host/var/run/containerd/containerd.sock",
 					},
 				},
 				JoinConfiguration: &upstreamv1beta1.JoinConfiguration{
 					NodeRegistration: upstreamv1beta1.NodeRegistrationOptions{
 						Name:      "foo",
-						CRISocket: "unix:///var/run/containerd/containerd.sock",
+						CRISocket: "unix:///host/var/run/containerd/containerd.sock",
 					},
 				},
 			},

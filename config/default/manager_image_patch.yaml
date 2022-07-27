@@ -11,8 +11,8 @@ spec:
         name: manager
         volumeMounts:
           - name: socket-dir
-            mountPath: /var/run/containerd/containerd.sock
+            mountPath: /host/var/run/containerd/containerd.sock
       volumes:
         - name: socket-dir
           hostPath:
-            path: /var/run/containerd/containerd.sock
+            path: /host/var/run/containerd/containerd.sock

@@ -259,13 +259,13 @@ spec:
         initConfiguration:
           nodeRegistration:
             # We have to set the criSocket to containerd as kubeadm defaults to docker runtime if both containerd and docker sockets are found
-            criSocket: unix:///var/run/containerd/containerd.sock
+            criSocket: unix:///host/var/run/containerd/containerd.sock
             kubeletExtraArgs:
               eviction-hard: 'nodefs.available<0%,nodefs.inodesFree<0%,imagefs.available<0%'
         joinConfiguration:
           nodeRegistration:
             # We have to set the criSocket to containerd as kubeadm defaults to docker runtime if both containerd and docker sockets are found
-            criSocket: unix:///var/run/containerd/containerd.sock
+            criSocket: unix:///host/var/run/containerd/containerd.sock
             kubeletExtraArgs:
               eviction-hard: 'nodefs.available<0%,nodefs.inodesFree<0%,imagefs.available<0%'
 ---
@@ -301,7 +301,7 @@ spec:
       joinConfiguration:
         nodeRegistration:
           # We have to set the criSocket to containerd as kubeadm defaults to docker runtime if both containerd and docker sockets are found
-          criSocket: unix:///var/run/containerd/containerd.sock
+          criSocket: unix:///host/var/run/containerd/containerd.sock
           kubeletExtraArgs:
             eviction-hard: 'nodefs.available<0%,nodefs.inodesFree<0%,imagefs.available<0%'
 

@@ -22,7 +22,7 @@ spec:
     spec:
       joinConfiguration:
         nodeRegistration:
-          criSocket: unix:///var/run/containerd/containerd.sock
+          criSocket: unix:///host/var/run/containerd/containerd.sock
           kubeletExtraArgs:
             eviction-hard: 'nodefs.available<0%,nodefs.inodesFree<0%,imagefs.available<0%'
 ---

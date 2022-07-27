@@ -45,8 +45,8 @@ apiVersion: kind.x-k8s.io/v1alpha4
 nodes:
 - role: control-plane
   extraMounts:
-    - hostPath: /var/run/docker.sock
-      containerPath: /var/run/docker.sock
+    - hostPath: /var/run/containerd/containerd.sock
+      containerPath: /host/var/run/containerd/containerd.sock
 containerdConfigPatches:
 - |-
   [plugins."io.containerd.grpc.v1.cri".registry.mirrors."localhost:${reg_port}"]

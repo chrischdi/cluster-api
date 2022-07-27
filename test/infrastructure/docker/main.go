@@ -179,7 +179,7 @@ func setupChecks(mgr ctrl.Manager) {
 
 func setupReconcilers(ctx context.Context, mgr ctrl.Manager) {
 	// Set our runtime client into the context for later use
-	runtimeClient, err := container.NewContainerdClient("/var/run/containerd/containerd.sock", "default")
+	runtimeClient, err := container.NewContainerdClient("/host/var/run/containerd/containerd.sock", "default")
 	if err != nil {
 		setupLog.Error(err, "unable to establish container runtime connection", "controller", "reconciler")
 		os.Exit(1)
