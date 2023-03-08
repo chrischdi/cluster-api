@@ -421,6 +421,15 @@ func Test_gitHubRepository_getLatestContractRelease(t *testing.T) {
 		fmt.Fprint(w, "v0.3.1\n")
 	})
 
+	// setup an handler for returning 4 fake releases but no actual tagged release
+	muxGoproxy.HandleFunc("/github.com/o/r2/@v/list", func(w http.ResponseWriter, r *http.Request) {
+		testMethod(t, r, "GET")
+		fmt.Fprint(w, "v0.5.0\n")
+		fmt.Fprint(w, "v0.4.0\n")
+		fmt.Fprint(w, "v0.3.2\n")
+		fmt.Fprint(w, "v0.3.1\n")
+	})
+
 	configVariablesClient := test.NewFakeVariableClient()
 
 	type field struct {
@@ -460,6 +469,15 @@ func Test_gitHubRepository_getLatestContractRelease(t *testing.T) {
 			contract: "foo",
 			wantErr:  false,
 		},
+		{
+			name: "Return 404 if there is no release for the tag",
+			field: field{
+				providerConfig: config.NewProvider("test", "https://github.com/o/r2/releases/v0.99.0/path", clusterctlv1.CoreProviderType),
+			},
+			want:     "0.99.0",
+			contract: "v1alpha4",
+			wantErr:  true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -494,6 +512,11 @@ func Test_gitHubRepository_getLatestRelease(t *testing.T) {
 		fmt.Fprint(w, "v0.4.3-alpha\n") // prerelease
 		fmt.Fprint(w, "foo\n")          // no semantic version tag
 	})
+	// And also expose a release for them
+	muxGoproxy.HandleFunc("/api.github.com/repos/o/r1/releases/tags/v0.4.2", func(w http.ResponseWriter, r *http.Request) {
+		testMethod(t, r, "GET")
+		fmt.Fprint(w, "{}\n")
+	})
 
 	// setup an handler for returning no releases
 	muxGoproxy.HandleFunc("/github.com/o/r2/@v/list", func(w http.ResponseWriter, r *http.Request) {
@@ -523,7 +546,7 @@ func Test_gitHubRepository_getLatestRelease(t *testing.T) {
 		{
 			name: "Get latest release, ignores pre-release version",
 			field: field{
-				providerConfig: config.NewProvider("test", "https://github.com/o/r1/releases/latest/path", clusterctlv1.CoreProviderType),
+				providerConfig: config.NewProvider("test", "https://github.com/o/r1/releases/v0.4.2/path", clusterctlv1.CoreProviderType),
 			},
 			want:    "v0.4.2",
 			wantErr: false,
@@ -539,7 +562,7 @@ func Test_gitHubRepository_getLatestRelease(t *testing.T) {
 		{
 			name: "Falls back to latest prerelease when no official release present",
 			field: field{
-				providerConfig: config.NewProvider("test", "https://github.com/o/r3/releases/latest/path", clusterctlv1.CoreProviderType),
+				providerConfig: config.NewProvider("test", "https://github.com/o/r3/releases/v0.1.0-alpha.2/path", clusterctlv1.CoreProviderType),
 			},
 			want:    "v0.1.0-alpha.2",
 			wantErr: false,
@@ -599,7 +622,7 @@ func Test_gitHubRepository_getLatestPatchRelease(t *testing.T) {
 		{
 			name: "Get latest patch release, no Major/Minor specified",
 			field: field{
-				providerConfig: config.NewProvider("test", "https://github.com/o/r1/releases/latest/path", clusterctlv1.CoreProviderType),
+				providerConfig: config.NewProvider("test", "https://github.com/o/r1/releases/v1.3.2/path", clusterctlv1.CoreProviderType),
 			},
 			minor:   nil,
 			major:   nil,
@@ -609,7 +632,7 @@ func Test_gitHubRepository_getLatestPatchRelease(t *testing.T) {
 		{
 			name: "Get latest patch release, for Major 0 and Minor 3",
 			field: field{
-				providerConfig: config.NewProvider("test", "https://github.com/o/r1/releases/latest/path", clusterctlv1.CoreProviderType),
+				providerConfig: config.NewProvider("test", "https://github.com/o/r1/releases/v0.3.2/path", clusterctlv1.CoreProviderType),
 			},
 			major:   &major0,
 			minor:   &minor3,
@@ -619,7 +642,7 @@ func Test_gitHubRepository_getLatestPatchRelease(t *testing.T) {
 		{
 			name: "Get latest patch release, for Major 0 and Minor 4",
 			field: field{
-				providerConfig: config.NewProvider("test", "https://github.com/o/r1/releases/latest/path", clusterctlv1.CoreProviderType),
+				providerConfig: config.NewProvider("test", "https://github.com/o/r1/releases/v0.4.0/path", clusterctlv1.CoreProviderType),
 			},
 			major:   &major0,
 			minor:   &minor4,

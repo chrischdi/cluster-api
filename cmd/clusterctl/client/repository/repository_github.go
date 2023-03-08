@@ -49,6 +49,8 @@ const (
 )
 
 var (
+	errNotFound = errors.New("404 Not Found")
+
 	// Caches used to limit the number of GitHub API calls.
 
 	cacheVersions              = map[string][]string{}
@@ -226,7 +228,7 @@ func NewGitHubRepository(providerConfig config.Provider, configVariablesClient c
 	if defaultVersion == githubLatestReleaseLabel {
 		repo.defaultVersion, err = latestContractRelease(repo, clusterv1.GroupVersion.Version)
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to get GitHub latest version")
+			return nil, errors.Wrap(err, "failed to get latest release")
 		}
 	}
 
@@ -332,6 +334,10 @@ func (g *gitHubRepository) getReleaseByTag(tag string) (*github.RepositoryReleas
 		release, _, getReleasesErr = client.Repositories.GetReleaseByTag(context.TODO(), g.owner, g.repository, tag)
 		if getReleasesErr != nil {
 			retryError = g.handleGithubErr(getReleasesErr, "failed to read release %q", tag)
+			// return immediately if not found
+			if errors.Is(retryError, errNotFound) {
+				return false, retryError
+			}
 			// return immediately if we are rate limited
 			if _, ok := getReleasesErr.(*github.RateLimitError); ok {
 				return false, retryError
@@ -417,6 +423,11 @@ func (g *gitHubRepository) downloadFilesFromRelease(release *github.RepositoryRe
 func (g *gitHubRepository) handleGithubErr(err error, message string, args ...interface{}) error {
 	if _, ok := err.(*github.RateLimitError); ok {
 		return errors.New("rate limit for github api has been reached. Please wait one hour or get a personal API token and assign it to the GITHUB_TOKEN environment variable")
+	}
+	if ghErr, ok := err.(*github.ErrorResponse); ok {
+		if ghErr.Response.StatusCode == http.StatusNotFound {
+			return errNotFound
+		}
 	}
 	return errors.Wrapf(err, message, args...)
 }
