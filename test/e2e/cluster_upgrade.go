@@ -92,6 +92,7 @@ func ClusterUpgradeConformanceSpec(ctx context.Context, inputGetter func() Clust
 		Expect(ctx).NotTo(BeNil(), "ctx is required for %s spec", specName)
 		input = inputGetter()
 		Expect(input.E2EConfig).ToNot(BeNil(), "Invalid argument. input.E2EConfig can't be nil when calling %s spec", specName)
+		Expect(input.E2EConfig.ResolveReleases()).To(Succeed(), "Failed to resolve release markers in e2e test config file")
 		Expect(input.ClusterctlConfigPath).To(BeAnExistingFile(), "Invalid argument. input.ClusterctlConfigPath must be an existing file when calling %s spec", specName)
 		Expect(input.BootstrapClusterProxy).ToNot(BeNil(), "Invalid argument. input.BootstrapClusterProxy can't be nil when calling %s spec", specName)
 		Expect(os.MkdirAll(input.ArtifactFolder, 0750)).To(Succeed(), "Invalid argument. input.ArtifactFolder can't be created for %s spec", specName)
