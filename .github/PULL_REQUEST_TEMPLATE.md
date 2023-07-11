@@ -5,3 +5,8 @@
 
 **Which issue(s) this PR fixes** *(optional, in `fixes #<issue number>(, fixes #<issue_number>, ...)` format, will close the issue(s) when PR gets merged)*:
 Fixes #
+
+<!-- Please add a matching /area label if possible. -->
+<!-- See https://github.com/kubernetes-sigs/cluster-api/labels?q=area for the list of labels.-->
+<!-- Example: -->
+<!-- /area provider/infrastructure-docker -->
