@@ -164,6 +164,11 @@ GOLANGCI_LINT_VER := $(shell cat .github/workflows/pr-golangci-lint.yaml | grep 
 GOLANGCI_LINT := $(abspath $(TOOLS_BIN_DIR)/$(GOLANGCI_LINT_BIN)-$(GOLANGCI_LINT_VER))
 GOLANGCI_LINT_PKG := github.com/golangci/golangci-lint/cmd/golangci-lint
 
+GOVULNCHECK_BIN := govulncheck
+GOVULNCHECK_VER := v1.0.0
+GOVULNCHECK := $(abspath $(TOOLS_BIN_DIR)/$(GOVULNCHECK_BIN)-$(GOVULNCHECK_VER))
+GOVULNCHECK_PKG := golang.org/x/vuln/cmd/govulncheck
+
 CONVERSION_VERIFIER_BIN := conversion-verifier
 CONVERSION_VERIFIER := $(abspath $(TOOLS_BIN_DIR)/$(CONVERSION_VERIFIER_BIN))
 
@@ -652,6 +657,14 @@ verify-tiltfile: ## Verify Tiltfile format
 .PHONY: verify-container-images
 verify-container-images: ## Verify container images
 	TRACE=$(TRACE) ./hack/verify-container-images.sh
+
+.PHONY: verify-govulncheck
+verify-govulncheck: $(GOVULNCHECK) ## Verify code for vulnerabilities
+	$(GOVULNCHECK) ./...
+
+.PHONY: verify-vulnerabilities
+verify-vulnerabilities: ## Verify code and images for vulnerabilities
+	TRACE=$(TRACE) ./hack/verify-vulnerabilities.sh
 
 ## --------------------------------------
 ## Binaries
@@ -1249,6 +1262,9 @@ $(GINKGO_BIN): $(GINKGO) ## Build a local copy of ginkgo.
 .PHONY: $(GOLANGCI_LINT_BIN)
 $(GOLANGCI_LINT_BIN): $(GOLANGCI_LINT) ## Build a local copy of golangci-lint.
 
+.PHONY: $(GOVULNCHECK_BIN)
+$(GOVULNCHECK_BIN): $(GOVULNCHECK) ## Build a local copy of govulncheck.
+
 $(CONTROLLER_GEN): # Build controller-gen from tools folder.
 	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) $(CONTROLLER_GEN_PKG) $(CONTROLLER_GEN_BIN) $(CONTROLLER_GEN_VER)
 
@@ -1299,6 +1315,9 @@ $(GINKGO): # Build ginkgo from tools folder.
 
 $(GOLANGCI_LINT): # Build golangci-lint from tools folder.
 	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) $(GOLANGCI_LINT_PKG) $(GOLANGCI_LINT_BIN) $(GOLANGCI_LINT_VER)
+
+$(GOVULNCHECK): # Build govulncheck.
+	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) $(GOVULNCHECK_PKG) $(GOVULNCHECK_BIN) $(GOVULNCHECK_VER)
 
 ## --------------------------------------
 ## Helpers
