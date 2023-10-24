@@ -25,31 +25,34 @@ import (
 
 	"github.com/blang/semver/v4"
 	. "github.com/onsi/gomega"
+
+	goproxytest "sigs.k8s.io/cluster-api/internal/goproxy/test"
 )
 
 func TestClient_GetVersions(t *testing.T) {
 	retryableOperationInterval = 200 * time.Millisecond
 	retryableOperationTimeout = 1 * time.Second
 
-	clientGoproxy, muxGoproxy, teardownGoproxy := NewFakeGoproxy()
+	scheme, host, muxGoproxy, teardownGoproxy := goproxytest.NewFakeGoproxy()
+	clientGoproxy := NewClient(scheme, host)
 	defer teardownGoproxy()
 
 	// setup an handler for returning 2 fake releases
 	muxGoproxy.HandleFunc("/github.com/o/r1/@v/list", func(w http.ResponseWriter, r *http.Request) {
-		TestMethod(t, r, "GET")
+		goproxytest.TestMethod(t, r, "GET")
 		fmt.Fprint(w, "v1.1.0\n")
 		fmt.Fprint(w, "v0.2.0\n")
 	})
 
 	// setup an handler for returning 2 fake releases for v1
 	muxGoproxy.HandleFunc("/github.com/o/r2/@v/list", func(w http.ResponseWriter, r *http.Request) {
-		TestMethod(t, r, "GET")
+		goproxytest.TestMethod(t, r, "GET")
 		fmt.Fprint(w, "v1.1.0\n")
 		fmt.Fprint(w, "v0.2.0\n")
 	})
 	// setup an handler for returning 2 fake releases for v2
 	muxGoproxy.HandleFunc("/github.com/o/r2/v2/@v/list", func(w http.ResponseWriter, r *http.Request) {
-		TestMethod(t, r, "GET")
+		goproxytest.TestMethod(t, r, "GET")
 		fmt.Fprint(w, "v2.0.1\n")
 		fmt.Fprint(w, "v2.0.0\n")
 	})

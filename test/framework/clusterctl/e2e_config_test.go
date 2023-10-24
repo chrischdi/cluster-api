@@ -23,15 +23,18 @@ import (
 
 	. "github.com/onsi/gomega"
 	"sigs.k8s.io/cluster-api/internal/goproxy"
+	goproxytest "sigs.k8s.io/cluster-api/internal/goproxy/test"
 )
 
 func Test_resolveReleaseMarker(t *testing.T) {
-	clientGoproxy, muxGoproxy, teardownGoproxy := goproxy.NewFakeGoproxy()
+
+	scheme, host, muxGoproxy, teardownGoproxy := goproxytest.NewFakeGoproxy()
+	clientGoproxy := goproxy.NewClient(scheme, host)
 	defer teardownGoproxy()
 
 	// setup an handler with fake releases
 	muxGoproxy.HandleFunc("/github.com/o/r1/@v/list", func(w http.ResponseWriter, r *http.Request) {
-		goproxy.TestMethod(t, r, "GET")
+		goproxytest.TestMethod(t, r, "GET")
 		fmt.Fprint(w, "v1.2.0\n")
 		fmt.Fprint(w, "v1.2.1-rc.0\n")
 	})

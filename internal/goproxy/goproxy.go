@@ -21,13 +21,11 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/http/httptest"
 	"net/url"
 	"path"
 	"path/filepath"
 	"sort"
 	"strings"
-	"testing"
 	"time"
 
 	"github.com/blang/semver/v4"
@@ -191,31 +189,4 @@ func GetSchemeAndHost(goproxy string) (string, string, error) {
 	}
 
 	return goproxyScheme, goproxyHost, nil
-}
-
-// NewFakeGoproxy sets up a test HTTP server along with a github.Client that is
-// configured to talk to that test server. Tests should register handlers on
-// mux which provide mock responses for the API method being tested.
-func NewFakeGoproxy() (client *Client, mux *http.ServeMux, teardown func()) {
-	// mux is the HTTP request multiplexer used with the test server.
-	mux = http.NewServeMux()
-
-	apiHandler := http.NewServeMux()
-	apiHandler.Handle("/", mux)
-
-	// server is a test HTTP server used to provide mock API responses.
-	server := httptest.NewServer(apiHandler)
-
-	// client is the GitHub client being tested and is configured to use test server.
-	url, _ := url.Parse(server.URL + "/")
-	return NewClient(url.Scheme, url.Host), mux, server.Close
-}
-
-// TestMethod reports error http.Request does not return want string.
-func TestMethod(t *testing.T, r *http.Request, want string) {
-	t.Helper()
-
-	if got := r.Method; got != want {
-		t.Errorf("Request method: %v, want %v", got, want)
-	}
 }
