@@ -37,6 +37,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/pflag"
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	kerrors "k8s.io/apimachinery/pkg/util/errors"
@@ -836,8 +837,12 @@ func prepareWorkload(name, prefix, binaryName, containerName string, objs []unst
 				}
 				deployment.Spec.Template.Annotations["parca.dev/port"] = "8443"
 
+				deployment.Spec.Replicas = ptr.To[int32](1)
+
 				container.LivenessProbe = nil
 				container.ReadinessProbe = nil
+
+				container.Resources = corev1.ResourceRequirements{}
 			}
 
 			container.Command = cmd
