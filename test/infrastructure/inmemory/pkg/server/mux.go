@@ -432,7 +432,7 @@ func (m *WorkloadClustersMux) AddAPIServer(wclName, podName string, caCert *x509
 			return nil
 		}
 
-		l, err := net.Listen("tcp", wcl.HostPort())
+		l, err := net.Listen("tcp", fmt.Sprintf(":%d", wcl.Port()))
 		if err != nil {
 			return errors.Wrapf(err, "failed to start WorkloadClusterListener %s, %s", wclName, wcl.HostPort())
 		}
