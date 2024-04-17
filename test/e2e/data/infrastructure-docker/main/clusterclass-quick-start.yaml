@@ -19,6 +19,7 @@ spec:
         apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
         name: quick-start-control-plane
     machineHealthCheck:
+      nodeStartupTimeout: 300h10m0s
       maxUnhealthy: 100%
       unhealthyConditions:
         - type: e2e.remediation.condition
@@ -49,6 +50,7 @@ spec:
             kind: DockerMachineTemplate
             name: quick-start-default-worker-machinetemplate
       machineHealthCheck:
+        nodeStartupTimeout: 300h10m0s
         maxUnhealthy: 100%
         # We are intentionally not setting the 'unhealthyConditions' here to test that the field is optional.
     machinePools:

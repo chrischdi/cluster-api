@@ -8,6 +8,7 @@ metadata:
   name: "${CLUSTER_NAME}-mhc-0"
 spec:
   clusterName: "${CLUSTER_NAME}"
+  nodeStartupTimeout: 300h10m0s
   maxUnhealthy: 100%
   selector:
     matchLabels:

@@ -1,0 +1,186 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  annotations:
+    prow.k8s.io/context: ""
+    prow.k8s.io/job: periodic-cluster-api-e2e-dualstack-and-ipv6-main
+    testgrid-alert-email: sig-cluster-lifecycle-cluster-api-alerts@kubernetes.io
+    testgrid-dashboards: sig-cluster-lifecycle-cluster-api
+    testgrid-num-failures-to-alert: "4"
+    testgrid-tab-name: capi-e2e-dualstack-and-ipv6-main
+  creationTimestamp: null
+  labels:
+    preset-dind-enabled: "true"
+    preset-kind-volume-mounts: "true"
+    prow.k8s.io/build-id: "1778390901802930176"
+    prow.k8s.io/context: ""
+    prow.k8s.io/id: e415ad82-dd1d-49c6-b283-38a6e541578f
+    prow.k8s.io/job: periodic-cluster-api-e2e-dualstack-and-ipv6-main
+    prow.k8s.io/refs.base_ref: main
+    prow.k8s.io/refs.org: kubernetes-sigs
+    prow.k8s.io/refs.repo: cluster-api
+    prow.k8s.io/type: periodic
+  name: e415ad82-dd1d-49c6-b283-38a6e541578f
+spec:
+  automountServiceAccountToken: false
+  containers:
+  - command:
+    - /bin/bash
+    - -c
+    - |
+      git config --global --add safe.directory /home/prow/go/src/sigs.k8s.io/cluster-api
+      /tools/entrypoint
+    env:
+    - name: DOCKER_IN_DOCKER_IPV6_ENABLED
+      value: "true"
+    - name: GINKGO_FOCUS
+      value: "PR-Blocking"
+    - name: GINKGO_SKIP
+      value: \[Conformance\]
+    - name: DOCKER_IN_DOCKER_ENABLED
+      value: "true"
+    - name: GOPROXY
+      value: https://proxy.golang.org
+    - name: AWS_ROLE_SESSION_NAME
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.name
+    - name: ARTIFACTS
+      value: /logs/artifacts
+    - name: BUILD_ID
+      value: "1778390901802930176"
+    - name: BUILD_NUMBER
+      value: "1778390901802930176"
+    - name: CI
+      value: "true"
+    - name: GOPATH
+      value: /home/prow/go
+    - name: JOB_NAME
+      value: periodic-cluster-api-e2e-dualstack-and-ipv6-main
+    - name: JOB_SPEC
+      value: '{"type":"periodic","job":"periodic-cluster-api-e2e-dualstack-and-ipv6-main","buildid":"1778390901802930176","prowjobid":"e415ad82-dd1d-49c6-b283-38a6e541578f","extra_refs":[{"org":"kubernetes-sigs","repo":"cluster-api","base_ref":"main","path_alias":"sigs.k8s.io/cluster-api","blobless_fetch":true},{"org":"kubernetes","repo":"kubernetes","base_ref":"master","path_alias":"k8s.io/kubernetes","blobless_fetch":true}],"decoration_config":{"timeout":"300h0m0s","grace_period":"300h0m0s","utility_images":{"clonerefs":"gcr.io/k8s-prow/clonerefs:v20240405-c76de01869","initupload":"gcr.io/k8s-prow/initupload:v20240405-c76de01869","entrypoint":"gcr.io/k8s-prow/entrypoint:v20240405-c76de01869","sidecar":"gcr.io/k8s-prow/sidecar:v20240405-c76de01869"},"resources":{"clonerefs":{"requests":{"cpu":"100m"}},"initupload":{"requests":{"cpu":"100m"}},"place_entrypoint":{"requests":{"cpu":"100m"}},"sidecar":{"requests":{"cpu":"100m"}}},"gcs_configuration":{"bucket":"kubernetes-jenkins","path_strategy":"legacy","default_org":"kubernetes","default_repo":"kubernetes"},"gcs_credentials_secret":"service-account","blobless_fetch":true}}'
+    - name: JOB_TYPE
+      value: periodic
+    - name: PROW_JOB_ID
+      value: e415ad82-dd1d-49c6-b283-38a6e541578f
+    - name: ENTRYPOINT_OPTIONS
+      value: '{"timeout":720000000000000,"grace_period":1080000000000000,"artifact_dir":"/logs/artifacts","args":["runner.sh","./scripts/ci-e2e.sh"],"container_name":"test","process_log":"/logs/process-log.txt","marker_file":"/logs/marker-file.txt","metadata_file":"/logs/artifacts/metadata.json"}'
+    image: gcr.io/k8s-staging-test-infra/kubekins-e2e:v20240408-d4d9f8e6b8-1.30
+    name: test
+    securityContext:
+      privileged: true
+    terminationMessagePolicy: FallbackToLogsOnError
+    volumeMounts:
+    - mountPath: /docker-graph
+      name: docker-graph
+    - mountPath: /var/lib/docker
+      name: docker-root
+    - mountPath: /lib/modules
+      name: modules
+      readOnly: true
+    - mountPath: /sys/fs/cgroup
+      name: cgroup
+    - mountPath: /logs
+      name: logs
+    - mountPath: /tools
+      name: tools
+    - mountPath: /home/prow/go/src/sigs.k8s.io/cluster-api
+      name: capi-dir
+    - mountPath: /home/prow/go
+      name: code
+    workingDir: /home/prow/go/src/sigs.k8s.io/cluster-api
+  - env:
+    - name: JOB_SPEC
+      value: '{"type":"periodic","job":"periodic-cluster-api-e2e-dualstack-and-ipv6-main","buildid":"1778390901802930176","prowjobid":"e415ad82-dd1d-49c6-b283-38a6e541578f","extra_refs":[{"org":"kubernetes-sigs","repo":"cluster-api","base_ref":"main","path_alias":"sigs.k8s.io/cluster-api","blobless_fetch":true},{"org":"kubernetes","repo":"kubernetes","base_ref":"master","path_alias":"k8s.io/kubernetes","blobless_fetch":true}],"decoration_config":{"timeout":"300h0m0s","grace_period":"300h0m0s","utility_images":{"clonerefs":"gcr.io/k8s-prow/clonerefs:v20240405-c76de01869","initupload":"gcr.io/k8s-prow/initupload:v20240405-c76de01869","entrypoint":"gcr.io/k8s-prow/entrypoint:v20240405-c76de01869","sidecar":"gcr.io/k8s-prow/sidecar:v20240405-c76de01869"},"resources":{"clonerefs":{"requests":{"cpu":"100m"}},"initupload":{"requests":{"cpu":"100m"}},"place_entrypoint":{"requests":{"cpu":"100m"}},"sidecar":{"requests":{"cpu":"100m"}}},"gcs_configuration":{"bucket":"kubernetes-jenkins","path_strategy":"legacy","default_org":"kubernetes","default_repo":"kubernetes"},"gcs_credentials_secret":"service-account","blobless_fetch":true}}'
+    - name: SIDECAR_OPTIONS
+      value: '{"gcs_options":{"items":["/logs/artifacts"],"bucket":"kubernetes-jenkins","path_strategy":"legacy","default_org":"kubernetes","default_repo":"kubernetes","local_output_dir":"/output","dry_run":false},"entries":[{"args":["runner.sh","./scripts/ci-e2e.sh"],"container_name":"test","process_log":"/logs/process-log.txt","marker_file":"/logs/marker-file.txt","metadata_file":"/logs/artifacts/metadata.json"}],"censoring_options":{}}'
+    image: gcr.io/k8s-prow/sidecar:v20240405-c76de01869
+    name: sidecar
+    resources:
+      requests:
+        cpu: 100m
+    terminationMessagePolicy: FallbackToLogsOnError
+    volumeMounts:
+    - mountPath: /logs
+      name: logs
+    - mountPath: /output
+      name: output
+  initContainers:
+  # - env:
+  #   - name: CLONEREFS_OPTIONS
+  #     value: '{"src_root":"/home/prow/go","log":"/logs/clone.json","git_user_name":"ci-robot","git_user_email":"ci-robot@k8s.io","refs":[{"org":"kubernetes-sigs","repo":"cluster-api","base_ref":"main","path_alias":"sigs.k8s.io/cluster-api","blobless_fetch":true},{"org":"kubernetes","repo":"kubernetes","base_ref":"master","path_alias":"k8s.io/kubernetes","blobless_fetch":true}],"github_api_endpoints":["https://api.github.com"]}'
+  #   image: gcr.io/k8s-prow/clonerefs:v20240405-c76de01869
+  #   name: clonerefs
+  #   resources:
+  #     requests:
+  #       cpu: 100m
+  #   terminationMessagePolicy: FallbackToLogsOnError
+  #   volumeMounts:
+  #   - mountPath: /logs
+  #     name: logs
+  #   - mountPath: /home/prow/go
+  #     name: code
+  #   - mountPath: /tmp
+  #     name: clonerefs-tmp
+  # - env:
+  #   - name: INITUPLOAD_OPTIONS
+  #     value: '{"bucket":"kubernetes-jenkins","path_strategy":"legacy","default_org":"kubernetes","default_repo":"kubernetes","local_output_dir":"/output","dry_run":false,"log":"/logs/clone.json"}'
+  #   - name: JOB_SPEC
+  #     value: '{"type":"periodic","job":"periodic-cluster-api-e2e-dualstack-and-ipv6-main","buildid":"1778390901802930176","prowjobid":"e415ad82-dd1d-49c6-b283-38a6e541578f","extra_refs":[{"org":"kubernetes-sigs","repo":"cluster-api","base_ref":"main","path_alias":"sigs.k8s.io/cluster-api","blobless_fetch":true},{"org":"kubernetes","repo":"kubernetes","base_ref":"master","path_alias":"k8s.io/kubernetes","blobless_fetch":true}],"decoration_config":{"timeout":"300h0m0s","grace_period":"300h0m0s","utility_images":{"clonerefs":"gcr.io/k8s-prow/clonerefs:v20240405-c76de01869","initupload":"gcr.io/k8s-prow/initupload:v20240405-c76de01869","entrypoint":"gcr.io/k8s-prow/entrypoint:v20240405-c76de01869","sidecar":"gcr.io/k8s-prow/sidecar:v20240405-c76de01869"},"resources":{"clonerefs":{"requests":{"cpu":"100m"}},"initupload":{"requests":{"cpu":"100m"}},"place_entrypoint":{"requests":{"cpu":"100m"}},"sidecar":{"requests":{"cpu":"100m"}}},"gcs_configuration":{"bucket":"kubernetes-jenkins","path_strategy":"legacy","default_org":"kubernetes","default_repo":"kubernetes"},"gcs_credentials_secret":"service-account","blobless_fetch":true}}'
+  #   image: gcr.io/k8s-prow/initupload:v20240405-c76de01869
+  #   name: initupload
+  #   resources:
+  #     requests:
+  #       cpu: 100m
+  #   terminationMessagePolicy: FallbackToLogsOnError
+  #   volumeMounts:
+  #   - mountPath: /logs
+  #     name: logs
+  #   - mountPath: /output
+  #     name: output
+  - args:
+    - --copy-mode-only
+    image: gcr.io/k8s-prow/entrypoint:v20240405-c76de01869
+    name: place-entrypoint
+    resources:
+      requests:
+        cpu: 100m
+    terminationMessagePolicy: FallbackToLogsOnError
+    volumeMounts:
+    - mountPath: /tools
+      name: tools
+  restartPolicy: Never
+  securityContext: {}
+  terminationGracePeriodSeconds: 1125
+  volumes:
+  - emptyDir: {}
+    name: docker-graph
+  - emptyDir: {}
+    name: docker-root
+  - hostPath:
+      path: /lib/modules
+      type: Directory
+    name: modules
+  - hostPath:
+      path: /sys/fs/cgroup
+      type: Directory
+    name: cgroup
+  - hostPath:
+      path: /mnt/disks/prowjob-out/test-out
+    name: output
+  - emptyDir: {}
+    name: logs
+  - emptyDir: {}
+    name: tools
+  - hostPath:
+      path: /go-src/sigs.k8s.io/cluster-api/
+    name: capi-dir
+  - hostPath:
+      path: /go-src
+    name: go-src
+  - emptyDir: {}
+    name: clonerefs-tmp
+  - emptyDir: {}
+    name: code
+status: {}
+

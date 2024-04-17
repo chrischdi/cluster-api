@@ -35,7 +35,7 @@ source "${REPO_ROOT}/hack/ensure-kind.sh"
 export PATH="${REPO_ROOT}/hack/tools/bin:${PATH}"
 
 # Builds CAPI (and CAPD) images.
-capi:buildDockerImages
+# capi:buildDockerImages
 
 # Configure e2e tests
 export GINKGO_NODES=3
@@ -43,7 +43,7 @@ export GINKGO_NOCOLOR=true
 export GINKGO_ARGS="${GINKGO_ARGS:-""}"
 export E2E_CONF_FILE="${REPO_ROOT}/test/e2e/config/docker.yaml"
 export ARTIFACTS="${ARTIFACTS:-${REPO_ROOT}/_artifacts}"
-export SKIP_RESOURCE_CLEANUP=${SKIP_RESOURCE_CLEANUP:-"false"}
+export SKIP_RESOURCE_CLEANUP=${SKIP_RESOURCE_CLEANUP:-"true"}
 export USE_EXISTING_CLUSTER=false
 
 # Prepare kindest/node images for all the required Kubernetes version; this implies
@@ -54,13 +54,15 @@ export USE_EXISTING_CLUSTER=false
 # - KUBERNETES_VERSION_UPGRADE_TO
 # - KUBERNETES_VERSION_UPGRADE_FROM
 # - KUBERNETES_VERSION_LATEST_CI
-k8s::prepareKindestImagesVariables
-k8s::prepareKindestImages
+# k8s::prepareKindestImagesVariables
+# k8s::prepareKindestImages
 
 # pre-pull all the images that will be used in the e2e, thus making the actual test run
 # less sensible to the network speed. This includes:
 # - cert-manager images
-kind:prepullAdditionalImages
+# kind:prepullAdditionalImages
+
+rm -rf "$ARTIFACTS"
 
 # Setup local output directory
 ARTIFACTS_LOCAL="${ARTIFACTS}/localhost"
@@ -115,7 +117,21 @@ trap "cleanup" EXIT SIGINT
 docker events > "${ARTIFACTS_LOCAL}/docker-events.txt" 2>&1 &
 ctr -n moby events > "${ARTIFACTS_LOCAL}/containerd-events.txt" 2>&1 &
 
+# docker save -o scripts/images.tar \
+#   quay.io/jetstack/cert-manager-cainjector:v1.14.4 \
+#   quay.io/jetstack/cert-manager-webhook:v1.14.4 \
+#   registry.k8s.io/conformance:v1.29.2 \
+#   quay.io/jetstack/cert-manager-controller:v1.14.4 \
+#   kindest/node:v1.29.2 \
+#   kindest/haproxy:v20230510-486859a6 \
+#   gcr.io/k8s-staging-cluster-api/capd-manager-amd64:dev \
+#   gcr.io/k8s-staging-cluster-api/test-extension-amd64:dev \
+#   gcr.io/k8s-staging-cluster-api/capim-manager-amd64:dev \
+#   gcr.io/k8s-staging-cluster-api/kubeadm-control-plane-controller-amd64:dev \
+#   gcr.io/k8s-staging-cluster-api/kubeadm-bootstrap-controller-amd64:dev
+docker load -i scripts/images.tar
+
 # Run e2e tests
 mkdir -p "$ARTIFACTS"
 echo "+ run tests!"
-make test-e2e
+make test-e2e || (echo "Failed, sleeping forever" && tail -f /dev/null)
