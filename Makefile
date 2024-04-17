@@ -967,7 +967,7 @@ test-test-extension-junit: $(SETUP_ENVTEST) $(GOTESTSUM) ## Run unit and integra
 	exit $$(cat $(ARTIFACTS)/junit.test_extension.exitcode)
 
 .PHONY: test-e2e
-test-e2e: $(GINKGO) generate-e2e-templates ## Run the end-to-end tests
+test-e2e: $(GINKGO) # generate-e2e-templates ## Run the end-to-end tests
 	$(GINKGO) -v --trace -poll-progress-after=$(GINKGO_POLL_PROGRESS_AFTER) \
 		-poll-progress-interval=$(GINKGO_POLL_PROGRESS_INTERVAL) --tags=e2e --focus="$(GINKGO_FOCUS)" \
 		$(_SKIP_ARGS) --nodes=$(GINKGO_NODES) --timeout=$(GINKGO_TIMEOUT) --no-color=$(GINKGO_NOCOLOR) \

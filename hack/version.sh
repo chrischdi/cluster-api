@@ -93,7 +93,7 @@ version::ldflags() {
         )
     }
 
-    add_ldflag "buildDate" "$(date ${SOURCE_DATE_EPOCH:+"--date=@${SOURCE_DATE_EPOCH}"} -u +'%Y-%m-%dT%H:%M:%SZ')"
+    add_ldflag "buildDate" "trimmed"
     add_ldflag "gitCommit" "${GIT_COMMIT}"
     add_ldflag "gitTreeState" "${GIT_TREE_STATE}"
     add_ldflag "gitMajor" "${GIT_MAJOR}"
