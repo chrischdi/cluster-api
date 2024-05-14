@@ -124,7 +124,7 @@ var _ = Describe("When testing clusterctl upgrades (v0.4=>v1.6=>current)", func(
 
 	// Get v1.7 latest stable release
 	version16 := "1.6"
-	stableRelease17, err := GetStableReleaseOfMinor(ctx, version16)
+	stableRelease16, err := GetStableReleaseOfMinor(ctx, version16)
 	Expect(err).ToNot(HaveOccurred(), "Failed to get stable version for minor release : %s", version16)
 
 	ClusterctlUpgradeSpec(ctx, func() ClusterctlUpgradeSpecInput {
