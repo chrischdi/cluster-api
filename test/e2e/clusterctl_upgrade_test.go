@@ -42,7 +42,7 @@ var _ = Describe("When testing clusterctl upgrades (v0.3=>v1.5=>current)", func(
 	// as described in https://github.com/kubernetes-sigs/cluster-api/issues/10051.
 	// NOTE: The combination of v0.3=>v1.5=>current allows us to verify this without being forced to upgrade
 	// the management cluster in the middle of the test as all 3 versions are ~ compatible with the same mgmt and workload Kubernetes versions.
-	// Additionally, clusterctl v1.6 still allows the upgrade of management clusters from v1alpha3 (v1.6 doesn't).
+	// Additionally, clusterctl v1.5 still allows the upgrade of management clusters from v1alpha3 (v1.6 doesn't).
 
 	// Get v0.3 latest stable release
 	version03 := "0.3"
