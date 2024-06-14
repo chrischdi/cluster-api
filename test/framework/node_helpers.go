@@ -36,22 +36,20 @@ type WaitForNodesReadyInput struct {
 // WaitForNodesReady waits until there are exactly the given count nodes and they have the correct Kubernetes version
 // and are ready.
 func WaitForNodesReady(ctx context.Context, input WaitForNodesReadyInput) {
-	Eventually(func() (bool, error) {
+	Eventually(func(g Gomega) bool {
 		nodeList := &corev1.NodeList{}
-		if err := input.Lister.List(ctx, nodeList); err != nil {
-			return false, err
-		}
+		g.Expect(input.Lister.List(ctx, nodeList)).To(Succeed())
 		nodeReadyCount := 0
 		for _, node := range nodeList.Items {
 			n := node
 			if node.Status.NodeInfo.KubeletVersion != input.KubernetesVersion {
-				return false, nil
+				return false
 			}
 			if !noderefutil.IsNodeReady(&n) {
-				return false, nil
+				return false
 			}
 			nodeReadyCount++
 		}
-		return input.Count == nodeReadyCount, nil
+		return input.Count == nodeReadyCount
 	}, input.WaitForNodesReady...).Should(BeTrue())
 }
