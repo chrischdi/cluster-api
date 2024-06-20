@@ -344,6 +344,8 @@ func (r *InMemoryMachineReconciler) reconcileNormalNode(ctx context.Context, clu
 	if machine.Spec.Version != nil {
 		node.Status.NodeInfo.KubeletVersion = *machine.Spec.Version
 	}
+	log := ctrl.LoggerFrom(ctx)
+	log.Info("set kubelet version", "kubeletVersion", node.Status.NodeInfo.KubeletVersion)
 
 	if util.IsControlPlaneMachine(machine) {
 		if node.Labels == nil {
