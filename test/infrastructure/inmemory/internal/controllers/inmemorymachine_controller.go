@@ -341,6 +341,10 @@ func (r *InMemoryMachineReconciler) reconcileNormalNode(ctx context.Context, clu
 			},
 		},
 	}
+	if machine.Spec.Version != nil {
+		node.Status.NodeInfo.KubeletVersion = *machine.Spec.Version
+	}
+
 	if util.IsControlPlaneMachine(machine) {
 		if node.Labels == nil {
 			node.Labels = map[string]string{}
