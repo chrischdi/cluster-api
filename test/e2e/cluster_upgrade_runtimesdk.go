@@ -90,6 +90,9 @@ type ClusterUpgradeWithRuntimeSDKSpecInput struct {
 	// If not specified, this is a no-op.
 	PostUpgrade func(managementClusterProxy framework.ClusterProxy, workloadClusterNamespace, workloadClusterName string)
 
+	// SkipKubeProxyCheck disables the check for kube-proxy to be upgraded.
+	SkipKubeProxyCheck bool
+
 	// ExtensionNamespace is the namespace where the service for the Runtime SDK is located
 	// and is used to configure in the test-namespace scoped ExtensionConfig.
 	ExtensionNamespace string
@@ -261,6 +264,7 @@ func ClusterUpgradeWithRuntimeSDKSpec(ctx context.Context, inputGetter func() Cl
 					input.E2EConfig.GetVariable(KubernetesVersionUpgradeTo),
 					input.E2EConfig.GetIntervals(specName, "wait-machine-upgrade"))
 			},
+			SkipKubeProxyCheck: input.SkipKubeProxyCheck,
 		})
 
 		By("Waiting until nodes are ready")

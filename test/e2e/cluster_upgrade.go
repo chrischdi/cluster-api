@@ -66,6 +66,9 @@ type ClusterUpgradeConformanceSpecInput struct {
 	// Allows to inject a function to be run after test namespace is created.
 	// If not specified, this is a no-op.
 	PostNamespaceCreated func(managementClusterProxy framework.ClusterProxy, workloadClusterNamespace string)
+
+	// SkipKubeProxyCheck disables the check for kube-proxy to be upgraded.
+	SkipKubeProxyCheck bool
 }
 
 // ClusterUpgradeConformanceSpec implements a spec that upgrades a cluster and runs the Kubernetes conformance suite.
@@ -180,6 +183,7 @@ func ClusterUpgradeConformanceSpec(ctx context.Context, inputGetter func() Clust
 				WaitForKubeProxyUpgrade:        input.E2EConfig.GetIntervals(specName, "wait-machine-upgrade"),
 				WaitForDNSUpgrade:              input.E2EConfig.GetIntervals(specName, "wait-machine-upgrade"),
 				WaitForEtcdUpgrade:             input.E2EConfig.GetIntervals(specName, "wait-machine-upgrade"),
+				SkipKubeProxyCheck:             input.SkipKubeProxyCheck,
 			})
 		} else {
 			// Cluster is not using ClusterClass, upgrade via individual resources.
