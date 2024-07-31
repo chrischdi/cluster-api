@@ -44,6 +44,8 @@ const (
 	validatingWebhookConfigurationKind = "ValidatingWebhookConfiguration"
 	mutatingWebhookConfigurationKind   = "MutatingWebhookConfiguration"
 	customResourceDefinitionKind       = "CustomResourceDefinition"
+	certificateKind                    = "Certificate"
+	certificateGroup                   = "cert-manager.io"
 	providerGroupKind                  = "Provider.clusterctl.cluster.x-k8s.io"
 )
 
@@ -202,6 +204,28 @@ func (p *providerComponents) Delete(ctx context.Context, options DeleteOptions) 
 			continue
 		}
 		resourcesToDelete = append(resourcesToDelete, obj)
+
+		// Cert-Manager creates secrets for Certificate objects which don't get deleted.
+		// During upgrades a new Certificate and Issuer are getting created, leading to
+		// also creating new certificate data which get written to the secret.
+		// Deleting the outdated secret during upgrades leads to the deployments to wait
+		// until the secret got created by cert-manager and not start using the outdated
+		// certificate data.
+		isCertificate := obj.GroupVersionKind().Kind == certificateKind && obj.GroupVersionKind().Group == certificateGroup
+
+		if isCertificate {
+			certificateSecretName, _, err := unstructured.NestedString(obj.Object, "spec", "secretName")
+			if err != nil {
+				log.Error(err, "identifying secret for %s, %s/%s", obj.GroupVersionKind(), obj.GetNamespace(), obj.GetName())
+			}
+
+			certificateSecret := unstructured.Unstructured{}
+			certificateSecret.SetName(certificateSecretName)
+			certificateSecret.SetNamespace(obj.GetNamespace())
+			certificateSecret.SetGroupVersionKind(corev1.SchemeGroupVersion.WithKind("Secret"))
+
+			resourcesToDelete = append(resourcesToDelete, certificateSecret)
+		}
 	}
 
 	// Delete all the provider components.
