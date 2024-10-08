@@ -76,6 +76,12 @@ var (
 
 const machineSetManagerName = "capi-machineset"
 
+type scope struct {
+	machineSet *clusterv1.MachineSet
+	cluster    *clusterv1.Cluster
+	machines   []*clusterv1.Machine
+}
+
 // Update permissions on /finalizers subresrouce is required on management clusters with 'OwnerReferencesPermissionEnforcement' plugin enabled.
 // See: https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/#ownerreferencespermissionenforcement
 //
@@ -170,32 +176,47 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ ctrl.Re
 		return ctrl.Result{}, nil
 	}
 
+	s := &scope{
+		cluster:    cluster,
+		machineSet: machineSet,
+	}
+
 	// Initialize the patch helper
-	patchHelper, err := patch.NewHelper(machineSet, r.Client)
+	patchHelper, err := patch.NewHelper(s.machineSet, r.Client)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
 	defer func() {
+		r.reconcileStatus(ctx, s)
+
 		// Always attempt to patch the object and status after each reconciliation.
-		if err := patchMachineSet(ctx, patchHelper, machineSet); err != nil {
+		if err := patchMachineSet(ctx, patchHelper, s.machineSet); err != nil {
 			reterr = kerrors.NewAggregate([]error{reterr, err})
 		}
 	}()
 
 	// Handle deletion reconciliation loop.
-	if !machineSet.DeletionTimestamp.IsZero() {
-		return ctrl.Result{}, r.reconcileDelete(ctx, machineSet)
+	if !s.machineSet.DeletionTimestamp.IsZero() {
+		return doReconcile(ctx, s, []machineSetReconcileFunc{
+			func(ctx context.Context, s *scope) (ctrl.Result, error) {
+				return ctrl.Result{}, r.reconcileDelete(ctx, s.machineSet)
+			},
+		})
 	}
 
 	// Add finalizer first if not set to avoid the race condition between init and delete.
 	// Note: Finalizers in general can only be added when the deletionTimestamp is not set.
-	if !controllerutil.ContainsFinalizer(machineSet, clusterv1.MachineSetFinalizer) {
-		controllerutil.AddFinalizer(machineSet, clusterv1.MachineSetFinalizer)
+	if !controllerutil.ContainsFinalizer(s.machineSet, clusterv1.MachineSetFinalizer) {
+		controllerutil.AddFinalizer(s.machineSet, clusterv1.MachineSetFinalizer)
 		return ctrl.Result{}, nil
 	}
 
-	result, err := r.reconcile(ctx, cluster, machineSet)
+	result, err := doReconcile(ctx, s, []machineSetReconcileFunc{
+		func(ctx context.Context, s *scope) (ctrl.Result, error) {
+			return r.reconcile(ctx, cluster, s.machineSet)
+		},
+	})
 	if err != nil {
 		// Requeue if the reconcile failed because the ClusterCacheTracker was locked for
 		// the current cluster because of concurrent access.
@@ -203,12 +224,34 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ ctrl.Re
 			log.V(5).Info("Requeuing because another worker has the lock on the ClusterCacheTracker")
 			return ctrl.Result{RequeueAfter: time.Minute}, nil
 		}
-		r.recorder.Eventf(machineSet, corev1.EventTypeWarning, "ReconcileError", "%v", err)
+		r.recorder.Eventf(s.machineSet, corev1.EventTypeWarning, "ReconcileError", "%v", err)
 	}
 	return result, err
 }
 
-func patchMachineSet(ctx context.Context, patchHelper *patch.Helper, machineSet *clusterv1.MachineSet, options ...patch.Option) error {
+type machineSetReconcileFunc func(ctx context.Context, s *scope) (ctrl.Result, error)
+
+func doReconcile(ctx context.Context, s *scope, phases []machineSetReconcileFunc) (ctrl.Result, error) {
+	res := ctrl.Result{}
+	errs := []error{}
+	for _, phase := range phases {
+		// Call the inner reconciliation methods.
+		phaseResult, err := phase(ctx, s)
+		if err != nil {
+			errs = append(errs, err)
+			continue
+		}
+		res = util.LowestNonZeroResult(res, phaseResult)
+	}
+
+	if len(errs) > 0 {
+		return ctrl.Result{}, kerrors.NewAggregate(errs)
+	}
+
+	return res, nil
+}
+
+func patchMachineSet(ctx context.Context, patchHelper *patch.Helper, machineSet *clusterv1.MachineSet) error {
 	// Always update the readyCondition by summarizing the state of other conditions.
 	conditions.SetSummary(machineSet,
 		conditions.WithConditions(
@@ -219,14 +262,14 @@ func patchMachineSet(ctx context.Context, patchHelper *patch.Helper, machineSet 
 	)
 
 	// Patch the object, ignoring conflicts on the conditions owned by this controller.
-	options = append(options,
+	options := []patch.Option{
 		patch.WithOwnedConditions{Conditions: []clusterv1.ConditionType{
 			clusterv1.ReadyCondition,
 			clusterv1.MachinesCreatedCondition,
 			clusterv1.ResizedCondition,
 			clusterv1.MachinesReadyCondition,
 		}},
-	)
+	}
 	return patchHelper.Patch(ctx, machineSet, options...)
 }
 
