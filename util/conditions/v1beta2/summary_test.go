@@ -21,6 +21,7 @@ import (
 
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	"sigs.k8s.io/cluster-api/internal/test/builder"
 )
@@ -138,7 +139,7 @@ func TestSummary(t *testing.T) {
 				{Type: "!C", Status: metav1.ConditionFalse, Reason: "Reason-!C", Message: "Message-!C"}, // info
 			},
 			conditionType: AvailableCondition,
-			options:       []SummaryOption{ForConditionTypes{"A", "B", "!C"}, NegativePolarityConditionTypes{"!C"}, CustomMergeStrategy{newDefaultMergeStrategy()}},
+			options:       []SummaryOption{ForConditionTypes{"A", "B", "!C"}, NegativePolarityConditionTypes{"!C"}, CustomMergeStrategy{newDefaultMergeStrategy(sets.New[string]("!C"))}},
 			want: &metav1.Condition{
 				Type:    AvailableCondition,
 				Status:  metav1.ConditionTrue,           // True because there are many info
@@ -205,22 +206,6 @@ func TestSummary(t *testing.T) {
 				Status:  metav1.ConditionTrue,       // True because there are many info
 				Reason:  MultipleInfoReportedReason, // Using a generic reason
 				Message: "B: Message-B",             // messages from all the info conditions (empty messages are dropped)
-			},
-		},
-		{
-			name: "With stepCounter",
-			conditions: []metav1.Condition{
-				{Type: "B", Status: metav1.ConditionTrue, Reason: "Reason-B", Message: "Message-B"},       // info
-				{Type: "A", Status: metav1.ConditionTrue, Reason: "Reason-A", Message: ""},                // info
-				{Type: "!C", Status: metav1.ConditionUnknown, Reason: "Reason-!C", Message: "Message-!C"}, // unknown
-			},
-			conditionType: AvailableCondition,
-			options:       []SummaryOption{ForConditionTypes{"A", "B", "!C"}, NegativePolarityConditionTypes{"!C"}, StepCounter(true)},
-			want: &metav1.Condition{
-				Type:    AvailableCondition,
-				Status:  metav1.ConditionUnknown,            // Unknown because there is one unknown
-				Reason:  "Reason-!C",                        // Picking the reason from the only existing unknown
-				Message: "2 of 3 completed; !C: Message-!C", // step counter + messages from all the issues & unknown conditions (info dropped)
 			},
 		},
 	}
