@@ -335,7 +335,7 @@ func (ca *clusterAccessor) HealthCheck(ctx context.Context) (bool, bool) {
 	log.V(6).Info("Run health probe")
 
 	// Executing the health probe is intentionally done without a lock to avoid blocking other reconcilers.
-	_, err := restClient.Get().AbsPath("/").Timeout(ca.config.HealthProbe.Timeout).DoRaw(ctx)
+	_, err := restClient.Get().AbsPath("/healthz").Timeout(ca.config.HealthProbe.Timeout).DoRaw(ctx)
 
 	ca.lock(ctx)
 	defer ca.unlock(ctx)
