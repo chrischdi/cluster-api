@@ -746,6 +746,8 @@ func (r *KubeadmControlPlaneReconciler) removePreTerminateHookAnnotationFromMach
 
 	machineOriginal := machine.DeepCopy()
 	delete(machine.Annotations, controlplanev1.PreTerminateHookCleanupAnnotation)
+	machine.Annotations[clusterv1.ExcludeNodeDrainingAnnotation] = ""
+	machine.Annotations[clusterv1.ExcludeWaitForNodeVolumeDetachAnnotation] = ""
 	if err := r.Client.Patch(ctx, machine, client.MergeFrom(machineOriginal)); err != nil {
 		return errors.Wrapf(err, "failed to remove pre-terminate hook from control plane Machine %s", klog.KObj(machine))
 	}
