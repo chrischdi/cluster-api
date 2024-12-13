@@ -61,6 +61,8 @@ kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 networking:
   ipFamily: ${KIND_NETWORK_IPFAMILY}
+  apiServerAddress: "192.168.24.39"
+  apiServerPort: 6443
 nodes:
 - role: control-plane
   extraMounts:

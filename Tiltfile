@@ -99,6 +99,7 @@ providers = {
             "internal",
             "../../go.mod",
             "../../go.sum",
+            "../../controllers/clustercache",
         ],
         "label": "KCP",
     },
