@@ -24,6 +24,7 @@ package topologymutation
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/blang/semver/v4"
 	"github.com/pkg/errors"
@@ -78,6 +79,8 @@ func NewExtensionHandlers(scheme *runtime.Scheme) *ExtensionHandlers {
 func (h *ExtensionHandlers) GeneratePatches(ctx context.Context, req *runtimehooksv1.GeneratePatchesRequest, resp *runtimehooksv1.GeneratePatchesResponse) {
 	log := ctrl.LoggerFrom(ctx)
 	log.Info("GeneratePatches is called")
+
+	time.Sleep(100 * time.Millisecond)
 
 	// TODO: validate variables.
 
@@ -414,6 +417,8 @@ func (h *ExtensionHandlers) ValidateTopology(ctx context.Context, _ *runtimehook
 func (h *ExtensionHandlers) DiscoverVariables(ctx context.Context, _ *runtimehooksv1.DiscoverVariablesRequest, resp *runtimehooksv1.DiscoverVariablesResponse) {
 	log := ctrl.LoggerFrom(ctx)
 	log.Info("DiscoverVariables called")
+
+	time.Sleep(100 * time.Millisecond)
 
 	resp.Status = runtimehooksv1.ResponseStatusSuccess
 	resp.Variables = []clusterv1.ClusterClassVariable{
