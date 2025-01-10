@@ -258,7 +258,8 @@ func main() {
 
 	// Setup Runtime Extensions.
 	setupTopologyMutationHookHandlers(runtimeExtensionWebhookServer)
-	setupLifecycleHookHandlers(mgr, runtimeExtensionWebhookServer)
+	// FIXME(sbueringer): disabled for now to ensure the lifecycle hooks don't interfere
+	//setupLifecycleHookHandlers(mgr, runtimeExtensionWebhookServer)
 
 	// Setup checks, indexes, reconcilers and webhooks.
 	setupChecks(mgr)
