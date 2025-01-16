@@ -94,7 +94,7 @@ func Test_cache_scale(t *testing.T) {
 								Name: machineName(item),
 							},
 						}
-						err := c.Create(resourceGroup, machine)
+						err := c.Create(ctx, resourceGroup, machine)
 						if apierrors.IsAlreadyExists(err) {
 							if err = c.Get(resourceGroup, types.NamespacedName{Name: machineName(item)}, machine); err == nil {
 								getCount.Add(1)
@@ -115,7 +115,7 @@ func Test_cache_scale(t *testing.T) {
 								Name: machineName(item),
 							},
 						}
-						err := c.Delete(resourceGroup, machine)
+						err := c.Delete(ctx, resourceGroup, machine)
 						if apierrors.IsNotFound(err) {
 							continue
 						}

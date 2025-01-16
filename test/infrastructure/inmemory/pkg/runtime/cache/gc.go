@@ -95,7 +95,7 @@ func (c *cache) processGarbageCollectorWorkItem(ctx context.Context) bool {
 		return true
 	}
 
-	deleted, err := c.tryDelete(gcr.resourceGroup, gcr.gvk, gcr.key)
+	deleted, err := c.tryDelete(ctx, gcr.resourceGroup, gcr.gvk, gcr.key)
 	if err != nil {
 		log.Error(err, "Error garbage collecting object", "resourceGroup", gcr.resourceGroup, gcr.gvk.Kind, gcr.key)
 	}

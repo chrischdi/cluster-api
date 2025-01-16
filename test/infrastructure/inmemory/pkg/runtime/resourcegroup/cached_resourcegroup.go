@@ -62,18 +62,18 @@ func (c *cachedClient) List(_ context.Context, list client.ObjectList, opts ...c
 	return c.cache.List(c.resourceGroup, list, opts...)
 }
 
-func (c *cachedClient) Create(_ context.Context, obj client.Object) error {
-	return c.cache.Create(c.resourceGroup, obj)
+func (c *cachedClient) Create(ctx context.Context, obj client.Object) error {
+	return c.cache.Create(ctx, c.resourceGroup, obj)
 }
 
-func (c *cachedClient) Delete(_ context.Context, obj client.Object) error {
-	return c.cache.Delete(c.resourceGroup, obj)
+func (c *cachedClient) Delete(ctx context.Context, obj client.Object) error {
+	return c.cache.Delete(ctx, c.resourceGroup, obj)
 }
 
-func (c *cachedClient) Update(_ context.Context, obj client.Object) error {
-	return c.cache.Update(c.resourceGroup, obj)
+func (c *cachedClient) Update(ctx context.Context, obj client.Object) error {
+	return c.cache.Update(ctx, c.resourceGroup, obj)
 }
 
-func (c *cachedClient) Patch(_ context.Context, obj client.Object, patch client.Patch) error {
-	return c.cache.Patch(c.resourceGroup, obj, patch)
+func (c *cachedClient) Patch(ctx context.Context, obj client.Object, patch client.Patch) error {
+	return c.cache.Patch(ctx, c.resourceGroup, obj, patch)
 }

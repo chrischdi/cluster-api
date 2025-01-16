@@ -31,6 +31,7 @@ import (
 
 func Test_cache_gc(t *testing.T) {
 	g := NewWithT(t)
+	ctx := context.TODO()
 	ctx, cancel := context.WithCancel(context.TODO())
 	defer cancel()
 
@@ -51,10 +52,10 @@ func Test_cache_gc(t *testing.T) {
 			Finalizers: []string{"foo"},
 		},
 	}
-	err = c.Create("foo", obj)
+	err = c.Create(ctx, "foo", obj)
 	g.Expect(err).ToNot(HaveOccurred())
 
-	err = c.Delete("foo", obj)
+	err = c.Delete(ctx, "foo", obj)
 	g.Expect(err).ToNot(HaveOccurred())
 
 	g.Consistently(func() bool {
@@ -65,7 +66,7 @@ func Test_cache_gc(t *testing.T) {
 	}, 5*time.Second, 200*time.Millisecond).Should(BeFalse(), "object with finalizer should never be deleted")
 
 	obj.Finalizers = nil
-	err = c.Update("foo", obj)
+	err = c.Update(ctx, "foo", obj)
 	g.Expect(err).ToNot(HaveOccurred())
 
 	g.Eventually(func() bool {

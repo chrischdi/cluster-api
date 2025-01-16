@@ -17,6 +17,7 @@ limitations under the License.
 package cache
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -148,15 +149,15 @@ func (c *cache) List(resourceGroup string, list client.ObjectList, opts ...clien
 	return nil
 }
 
-func (c *cache) Create(resourceGroup string, obj client.Object) error {
-	return c.store(resourceGroup, obj, false)
+func (c *cache) Create(ctx context.Context, resourceGroup string, obj client.Object) error {
+	return c.store(ctx, resourceGroup, obj, false)
 }
 
-func (c *cache) Update(resourceGroup string, obj client.Object) error {
-	return c.store(resourceGroup, obj, true)
+func (c *cache) Update(ctx context.Context, resourceGroup string, obj client.Object) error {
+	return c.store(ctx, resourceGroup, obj, true)
 }
 
-func (c *cache) store(resourceGroup string, obj client.Object, replaceExisting bool) error {
+func (c *cache) store(ctx context.Context, resourceGroup string, obj client.Object, replaceExisting bool) error {
 	if resourceGroup == "" {
 		return apierrors.NewBadRequest("resourceGroup must not be empty")
 	}
@@ -216,7 +217,7 @@ func (c *cache) store(resourceGroup string, obj client.Object, replaceExisting b
 
 			tracker.objects[objGVK][objKey] = obj.DeepCopyObject().(client.Object)
 			updateTrackerOwnerReferences(tracker, trackedObj, obj, objRef)
-			c.afterUpdate(resourceGroup, trackedObj, obj)
+			c.afterUpdate(ctx, resourceGroup, trackedObj, obj)
 			return nil
 		}
 		return apierrors.NewAlreadyExists(unsafeGuessGroupVersionResource(objGVK).GroupResource(), objKey.String())
@@ -230,7 +231,7 @@ func (c *cache) store(resourceGroup string, obj client.Object, replaceExisting b
 
 	tracker.objects[objGVK][objKey] = obj.DeepCopyObject().(client.Object)
 	updateTrackerOwnerReferences(tracker, nil, obj, objRef)
-	c.afterCreate(resourceGroup, obj)
+	c.afterCreate(ctx, resourceGroup, obj)
 	return nil
 }
 
@@ -280,7 +281,7 @@ func updateTrackerOwnerReferences(tracker *resourceGroupTracker, oldObj, newObj 
 	}
 }
 
-func (c *cache) Patch(resourceGroup string, obj client.Object, patch client.Patch) error {
+func (c *cache) Patch(ctx context.Context, resourceGroup string, obj client.Object, patch client.Patch) error {
 	patchData, err := patch.Data(obj)
 	if err != nil {
 		return apierrors.NewInternalError(err)
@@ -319,7 +320,7 @@ func (c *cache) Patch(resourceGroup string, obj client.Object, patch client.Patc
 		return apierrors.NewInternalError(err)
 	}
 
-	return c.store(resourceGroup, obj, true)
+	return c.store(ctx, resourceGroup, obj, true)
 }
 
 func (c *cache) getEncoder(obj runtime.Object, gv runtime.GroupVersioner) (runtime.Encoder, error) {
@@ -334,7 +335,7 @@ func (c *cache) getEncoder(obj runtime.Object, gv runtime.GroupVersioner) (runti
 	return encoder, nil
 }
 
-func (c *cache) Delete(resourceGroup string, obj client.Object) error {
+func (c *cache) Delete(ctx context.Context, resourceGroup string, obj client.Object) error {
 	if resourceGroup == "" {
 		return apierrors.NewBadRequest("resourceGroup must not be empty")
 	}
@@ -355,7 +356,7 @@ func (c *cache) Delete(resourceGroup string, obj client.Object) error {
 	obj = obj.DeepCopyObject().(client.Object)
 
 	objKey := client.ObjectKeyFromObject(obj)
-	deleted, err := c.tryDelete(resourceGroup, objGVK, objKey)
+	deleted, err := c.tryDelete(ctx, resourceGroup, objGVK, objKey)
 	if err != nil {
 		return err
 	}
@@ -369,7 +370,7 @@ func (c *cache) Delete(resourceGroup string, obj client.Object) error {
 	return nil
 }
 
-func (c *cache) tryDelete(resourceGroup string, gvk schema.GroupVersionKind, key types.NamespacedName) (bool, error) {
+func (c *cache) tryDelete(ctx context.Context, resourceGroup string, gvk schema.GroupVersionKind, key types.NamespacedName) (bool, error) {
 	tracker := c.resourceGroupTracker(resourceGroup)
 	if tracker == nil {
 		return true, apierrors.NewBadRequest(fmt.Sprintf("resourceGroup %s does not exist", resourceGroup))
@@ -378,12 +379,12 @@ func (c *cache) tryDelete(resourceGroup string, gvk schema.GroupVersionKind, key
 	tracker.lock.Lock()
 	defer tracker.lock.Unlock()
 
-	return c.doTryDeleteLocked(resourceGroup, tracker, gvk, key)
+	return c.doTryDeleteLocked(ctx, resourceGroup, tracker, gvk, key)
 }
 
 // doTryDeleteLocked tries to delete an objects.
 // Note: The tracker must bve already locked when calling this method.
-func (c *cache) doTryDeleteLocked(resourceGroup string, tracker *resourceGroupTracker, objGVK schema.GroupVersionKind, objKey types.NamespacedName) (bool, error) {
+func (c *cache) doTryDeleteLocked(ctx context.Context, resourceGroup string, tracker *resourceGroupTracker, objGVK schema.GroupVersionKind, objKey types.NamespacedName) (bool, error) {
 	objects, ok := tracker.objects[objGVK]
 	if !ok {
 		return true, apierrors.NewNotFound(unsafeGuessGroupVersionResource(objGVK).GroupResource(), objKey.String())
@@ -398,7 +399,7 @@ func (c *cache) doTryDeleteLocked(resourceGroup string, tracker *resourceGroupTr
 	// TODO: Consider only deleting the hierarchy if the obj doesn't have any finalizers.
 	if ownedReferences, ok := tracker.ownedObjects[ownReference{gvk: objGVK, key: objKey}]; ok {
 		for ref := range ownedReferences {
-			deleted, err := c.doTryDeleteLocked(resourceGroup, tracker, ref.gvk, ref.key)
+			deleted, err := c.doTryDeleteLocked(ctx, resourceGroup, tracker, ref.gvk, ref.key)
 			if err != nil {
 				return false, err
 			}
@@ -425,7 +426,7 @@ func (c *cache) doTryDeleteLocked(resourceGroup string, tracker *resourceGroupTr
 		c.beforeUpdate(resourceGroup, oldObj, obj)
 
 		objects[objKey] = obj
-		c.afterUpdate(resourceGroup, oldObj, obj)
+		c.afterUpdate(ctx, resourceGroup, oldObj, obj)
 	}
 
 	// If the object still has finalizers return early.

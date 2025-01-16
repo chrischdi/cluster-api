@@ -35,6 +35,7 @@ import (
 func Test_cache_client(t *testing.T) {
 	t.Run("create objects", func(t *testing.T) {
 		g := NewWithT(t)
+		ctx := context.TODO()
 
 		c := NewCache(scheme).(*cache)
 		h := &fakeHandler{}
@@ -53,7 +54,7 @@ func Test_cache_client(t *testing.T) {
 					Name: "foo",
 				},
 			}
-			err := c.Create("", obj)
+			err := c.Create(ctx, "", obj)
 			g.Expect(err).To(HaveOccurred())
 			g.Expect(apierrors.IsBadRequest(err)).To(BeTrue())
 		})
@@ -61,7 +62,7 @@ func Test_cache_client(t *testing.T) {
 		t.Run("fails if obj is nil", func(t *testing.T) {
 			g := NewWithT(t)
 
-			err := c.Create("foo", nil)
+			err := c.Create(ctx, "foo", nil)
 			g.Expect(err).To(HaveOccurred())
 			g.Expect(apierrors.IsBadRequest(err)).To(BeTrue())
 		})
@@ -78,7 +79,7 @@ func Test_cache_client(t *testing.T) {
 					Name: "foo",
 				},
 			}
-			err := c.Create("bar", obj)
+			err := c.Create(ctx, "bar", obj)
 			g.Expect(err).To(HaveOccurred())
 			g.Expect(apierrors.IsBadRequest(err)).To(BeTrue())
 		})
@@ -121,7 +122,7 @@ func Test_cache_client(t *testing.T) {
 					Name: "bazzz",
 				},
 			}
-			err := c.Create("foo", obj)
+			err := c.Create(ctx, "foo", obj)
 			g.Expect(err).To(HaveOccurred())
 			g.Expect(apierrors.IsAlreadyExists(err)).To(BeTrue())
 		})
@@ -142,7 +143,7 @@ func Test_cache_client(t *testing.T) {
 						},
 					},
 				}
-				err := c.Create("foo", obj)
+				err := c.Create(ctx, "foo", obj)
 				g.Expect(err).To(HaveOccurred())
 				g.Expect(apierrors.IsBadRequest(err)).To(BeTrue())
 			})
@@ -161,7 +162,7 @@ func Test_cache_client(t *testing.T) {
 						},
 					},
 				}
-				err := c.Create("foo", obj)
+				err := c.Create(ctx, "foo", obj)
 				g.Expect(err).To(HaveOccurred())
 				g.Expect(apierrors.IsBadRequest(err)).To(BeTrue())
 			})
@@ -181,7 +182,7 @@ func Test_cache_client(t *testing.T) {
 						},
 					},
 				}
-				err := c.Create("foo", obj)
+				err := c.Create(ctx, "foo", obj)
 				g.Expect(err).ToNot(HaveOccurred())
 
 				// Check internal state of the tracker is as expected.
@@ -337,6 +338,7 @@ func Test_cache_client(t *testing.T) {
 
 	t.Run("update objects", func(t *testing.T) {
 		g := NewWithT(t)
+		ctx := context.TODO()
 
 		c := NewCache(scheme).(*cache)
 		h := &fakeHandler{}
@@ -351,7 +353,7 @@ func Test_cache_client(t *testing.T) {
 			g := NewWithT(t)
 
 			obj := &cloudv1.CloudMachine{}
-			err := c.Update("", obj)
+			err := c.Update(ctx, "", obj)
 			g.Expect(err).To(HaveOccurred())
 			g.Expect(apierrors.IsBadRequest(err)).To(BeTrue())
 		})
@@ -359,7 +361,7 @@ func Test_cache_client(t *testing.T) {
 		t.Run("fails if Object is nil", func(t *testing.T) {
 			g := NewWithT(t)
 
-			err := c.Update("foo", nil)
+			err := c.Update(ctx, "foo", nil)
 			g.Expect(err).To(HaveOccurred())
 			g.Expect(apierrors.IsBadRequest(err)).To(BeTrue())
 		})
@@ -372,7 +374,7 @@ func Test_cache_client(t *testing.T) {
 			g := NewWithT(t)
 
 			obj := &cloudv1.CloudMachine{}
-			err := c.Update("foo", obj)
+			err := c.Update(ctx, "foo", obj)
 			g.Expect(err).To(HaveOccurred())
 			g.Expect(apierrors.IsBadRequest(err)).To(BeTrue())
 		})
@@ -385,7 +387,7 @@ func Test_cache_client(t *testing.T) {
 					Name: "bar",
 				},
 			}
-			err := c.Update("bar", obj)
+			err := c.Update(ctx, "bar", obj)
 			g.Expect(err).To(HaveOccurred())
 			g.Expect(apierrors.IsBadRequest(err)).To(BeTrue())
 		})
@@ -398,7 +400,7 @@ func Test_cache_client(t *testing.T) {
 					Name: "bar",
 				},
 			}
-			err := c.Update("foo", obj)
+			err := c.Update(ctx, "foo", obj)
 			g.Expect(err).To(HaveOccurred())
 			g.Expect(apierrors.IsNotFound(err)).To(BeTrue())
 		})
@@ -409,7 +411,7 @@ func Test_cache_client(t *testing.T) {
 			objBefore := createMachine(t, c, "foo", "bar")
 
 			objUpdate := objBefore.DeepCopy()
-			err = c.Update("foo", objUpdate)
+			err = c.Update(ctx, "foo", objUpdate)
 			g.Expect(err).ToNot(HaveOccurred())
 
 			g.Expect(objBefore).To(BeComparableTo(objUpdate), "obj before and after must be the same")
@@ -426,7 +428,7 @@ func Test_cache_client(t *testing.T) {
 
 			objUpdate := objBefore.DeepCopy()
 			objUpdate.Labels = map[string]string{"foo": "bar"}
-			err = c.Update("foo", objUpdate)
+			err = c.Update(ctx, "foo", objUpdate)
 			g.Expect(err).ToNot(HaveOccurred())
 
 			// Check all the computed fields are as expected.
@@ -450,11 +452,11 @@ func Test_cache_client(t *testing.T) {
 
 			time.Sleep(1 * time.Second)
 
-			err = c.Update("foo", objUpdate1)
+			err = c.Update(ctx, "foo", objUpdate1)
 			g.Expect(err).ToNot(HaveOccurred())
 
 			objUpdate2 := objBefore.DeepCopy()
-			err = c.Update("foo", objUpdate2)
+			err = c.Update(ctx, "foo", objUpdate2)
 			g.Expect(err).To(HaveOccurred())
 			g.Expect(apierrors.IsConflict(err)).To(BeTrue())
 
@@ -477,7 +479,7 @@ func Test_cache_client(t *testing.T) {
 						},
 					},
 				}
-				err := c.Update("foo", obj)
+				err := c.Update(ctx, "foo", obj)
 				g.Expect(err).To(HaveOccurred())
 				g.Expect(apierrors.IsBadRequest(err)).To(BeTrue())
 			})
@@ -494,7 +496,7 @@ func Test_cache_client(t *testing.T) {
 						Name:       "parentx",
 					},
 				}
-				err := c.Update("foo", objUpdate)
+				err := c.Update(ctx, "foo", objUpdate)
 				g.Expect(err).To(HaveOccurred())
 				g.Expect(apierrors.IsBadRequest(err)).To(BeTrue())
 			})
@@ -516,13 +518,13 @@ func Test_cache_client(t *testing.T) {
 						},
 					},
 				}
-				err := c.Create("foo", objBefore)
+				err := c.Create(ctx, "foo", objBefore)
 				g.Expect(err).ToNot(HaveOccurred())
 
 				objUpdate := objBefore.DeepCopy()
 				objUpdate.OwnerReferences[0].Name = "parent2"
 
-				err = c.Update("foo", objUpdate)
+				err = c.Update(ctx, "foo", objUpdate)
 				g.Expect(err).ToNot(HaveOccurred())
 
 				// Check internal state of the tracker
@@ -547,6 +549,7 @@ func Test_cache_client(t *testing.T) {
 
 	t.Run("delete objects", func(t *testing.T) {
 		g := NewWithT(t)
+		ctx := context.TODO()
 
 		c := NewCache(scheme).(*cache)
 		h := &fakeHandler{}
@@ -561,7 +564,7 @@ func Test_cache_client(t *testing.T) {
 			g := NewWithT(t)
 
 			obj := &cloudv1.CloudMachine{}
-			err := c.Delete("", obj)
+			err := c.Delete(ctx, "", obj)
 			g.Expect(err).To(HaveOccurred())
 			g.Expect(apierrors.IsBadRequest(err)).To(BeTrue())
 		})
@@ -569,7 +572,7 @@ func Test_cache_client(t *testing.T) {
 		t.Run("fails if Object is nil", func(t *testing.T) {
 			g := NewWithT(t)
 
-			err := c.Delete("foo", nil)
+			err := c.Delete(ctx, "foo", nil)
 			g.Expect(err).To(HaveOccurred())
 			g.Expect(apierrors.IsBadRequest(err)).To(BeTrue())
 		})
@@ -578,7 +581,7 @@ func Test_cache_client(t *testing.T) {
 			g := NewWithT(t)
 
 			obj := &cloudv1.CloudMachine{}
-			err := c.Delete("foo", obj)
+			err := c.Delete(ctx, "foo", obj)
 			g.Expect(err).To(HaveOccurred())
 			g.Expect(apierrors.IsBadRequest(err)).To(BeTrue())
 		})
@@ -595,7 +598,7 @@ func Test_cache_client(t *testing.T) {
 					Name: "bar",
 				},
 			}
-			err := c.Delete("foo", obj)
+			err := c.Delete(ctx, "foo", obj)
 			g.Expect(err).To(HaveOccurred())
 			g.Expect(apierrors.IsNotFound(err)).To(BeTrue())
 		})
@@ -610,7 +613,7 @@ func Test_cache_client(t *testing.T) {
 					Name: "bar",
 				},
 			}
-			err := c.Delete("foo", obj)
+			err := c.Delete(ctx, "foo", obj)
 			g.Expect(err).To(HaveOccurred())
 			g.Expect(apierrors.IsNotFound(err)).To(BeTrue())
 		})
@@ -620,7 +623,7 @@ func Test_cache_client(t *testing.T) {
 
 			obj := createMachine(t, c, "foo", "bar")
 
-			err := c.Delete("foo", obj)
+			err := c.Delete(ctx, "foo", obj)
 			g.Expect(err).ToNot(HaveOccurred())
 
 			c.lock.RLock()
@@ -650,12 +653,12 @@ func Test_cache_client(t *testing.T) {
 					Finalizers: []string{"foo"},
 				},
 			}
-			err := c.Create("foo", objBefore)
+			err := c.Create(ctx, "foo", objBefore)
 			g.Expect(err).ToNot(HaveOccurred())
 
 			time.Sleep(1 * time.Second)
 
-			err = c.Delete("foo", objBefore)
+			err = c.Delete(ctx, "foo", objBefore)
 			g.Expect(err).ToNot(HaveOccurred())
 
 			objAfterUpdate := &cloudv1.CloudMachine{}
@@ -679,6 +682,7 @@ func Test_cache_client(t *testing.T) {
 
 		t.Run("delete with owner reference", func(t *testing.T) {
 			g := NewWithT(t)
+			ctx := context.TODO()
 
 			createMachine(t, c, "foo", "parent3")
 
@@ -694,7 +698,7 @@ func Test_cache_client(t *testing.T) {
 					},
 				},
 			}
-			err := c.Create("foo", obj)
+			err := c.Create(ctx, "foo", obj)
 			g.Expect(err).ToNot(HaveOccurred())
 
 			obj = &cloudv1.CloudMachine{
@@ -709,7 +713,7 @@ func Test_cache_client(t *testing.T) {
 					},
 				},
 			}
-			err = c.Create("foo", obj)
+			err = c.Create(ctx, "foo", obj)
 			g.Expect(err).ToNot(HaveOccurred())
 
 			obj = &cloudv1.CloudMachine{
@@ -717,7 +721,7 @@ func Test_cache_client(t *testing.T) {
 					Name: "parent3",
 				},
 			}
-			err = c.Delete("foo", obj)
+			err = c.Delete(ctx, "foo", obj)
 			g.Expect(err).ToNot(HaveOccurred())
 
 			c.lock.RLock()
@@ -737,13 +741,14 @@ func createMachine(t *testing.T, c *cache, resourceGroup, name string) *cloudv1.
 	t.Helper()
 
 	g := NewWithT(t)
+	ctx := context.TODO()
 
 	obj := &cloudv1.CloudMachine{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 		},
 	}
-	err := c.Create(resourceGroup, obj)
+	err := c.Create(ctx, resourceGroup, obj)
 	g.Expect(err).ToNot(HaveOccurred())
 
 	return obj

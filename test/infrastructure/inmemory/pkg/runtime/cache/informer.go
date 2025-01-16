@@ -18,9 +18,11 @@ package cache
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 )
@@ -67,7 +69,8 @@ func (c *cache) GetInformerForKind(_ context.Context, gvk schema.GroupVersionKin
 	return c.informers[gvk], nil
 }
 
-func (c *cache) informCreate(resourceGroup string, obj client.Object) {
+func (c *cache) informCreate(ctx context.Context, resourceGroup string, obj client.Object) {
+	log := ctrl.LoggerFrom(ctx)
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 
@@ -76,13 +79,15 @@ func (c *cache) informCreate(resourceGroup string, obj client.Object) {
 		i.lock.RLock()
 		defer i.lock.RUnlock()
 
+		log.V(4).Info("Informing OnCreate", "resourceGroup", resourceGroup, "nrHandlers", fmt.Sprintf("%d", len(i.handlers)))
 		for _, h := range i.handlers {
 			h.OnCreate(resourceGroup, obj)
 		}
 	}
 }
 
-func (c *cache) informUpdate(resourceGroup string, oldObj, newObj client.Object) {
+func (c *cache) informUpdate(ctx context.Context, resourceGroup string, oldObj, newObj client.Object) {
+	log := ctrl.LoggerFrom(ctx)
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 
@@ -91,6 +96,7 @@ func (c *cache) informUpdate(resourceGroup string, oldObj, newObj client.Object)
 		i.lock.RLock()
 		defer i.lock.RUnlock()
 
+		log.V(4).Info("Informing OnUpdate", "resourceGroup", resourceGroup, "nrHandlers", fmt.Sprintf("%d", len(i.handlers)))
 		for _, h := range i.handlers {
 			h.OnUpdate(resourceGroup, oldObj, newObj)
 		}

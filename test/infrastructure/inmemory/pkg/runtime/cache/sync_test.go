@@ -30,6 +30,7 @@ import (
 
 func Test_cache_sync(t *testing.T) {
 	g := NewWithT(t)
+	ctx := context.TODO()
 
 	ctx, cancel := context.WithCancel(context.TODO())
 	defer cancel()
@@ -53,7 +54,7 @@ func Test_cache_sync(t *testing.T) {
 			Name: "baz",
 		},
 	}
-	err = c.Create("foo", obj)
+	err = c.Create(ctx, "foo", obj)
 	g.Expect(err).ToNot(HaveOccurred())
 
 	objBefore := &cloudv1.CloudMachine{}

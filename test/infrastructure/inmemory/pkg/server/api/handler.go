@@ -47,6 +47,8 @@ import (
 	"k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/apiserver/pkg/server"
 	"k8s.io/client-go/tools/portforward"
+	"k8s.io/klog/v2"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	inmemoryruntime "sigs.k8s.io/cluster-api/test/infrastructure/inmemory/pkg/runtime"
@@ -279,6 +281,7 @@ func (h *apiServerHandler) apiV1Create(req *restful.Request, resp *restful.Respo
 
 	// Create the object
 	obj := newObj.(client.Object)
+	ctx = ctrl.LoggerInto(ctx, h.log.WithValues("handlerFunc", "apiV1Create", gvk.Kind, klog.KRef(obj.GetNamespace(), obj.GetName())))
 	// TODO: consider check vs enforce for namespace on the object - namespace on the request path
 	obj.SetNamespace(req.PathParameter("namespace"))
 	if err := inmemoryClient.Create(ctx, obj); err != nil {
@@ -314,6 +317,8 @@ func (h *apiServerHandler) apiV1List(req *restful.Request, resp *restful.Respons
 		_ = resp.WriteErrorString(http.StatusInternalServerError, err.Error())
 		return
 	}
+
+	h.log.Info(fmt.Sprintf("Serving List for %v", req.Request.URL))
 
 	// Reads and returns the requested data.
 	list := &unstructured.UnstructuredList{}
@@ -460,6 +465,7 @@ func (h *apiServerHandler) apiV1Update(req *restful.Request, resp *restful.Respo
 
 	// Update the object
 	obj := newObj.(client.Object)
+	ctx = ctrl.LoggerInto(ctx, h.log.WithValues("handlerFunc", "apiV1Update", gvk.Kind, klog.KRef(obj.GetNamespace(), obj.GetName())))
 	// TODO: consider check vs enforce for namespace on the object - namespace on the request path
 	obj.SetNamespace(req.PathParameter("namespace"))
 	if err := inmemoryClient.Update(ctx, obj); err != nil {
@@ -505,6 +511,7 @@ func (h *apiServerHandler) apiV1Patch(req *restful.Request, resp *restful.Respon
 
 	// Apply the Patch.
 	obj := &unstructured.Unstructured{}
+	ctx = ctrl.LoggerInto(ctx, h.log.WithValues("handlerFunc", "apiV1Update", gvk.Kind, klog.KRef(obj.GetNamespace(), obj.GetName())))
 	// TODO: consider check vs enforce for gvk on the object - gvk on the request path (same for name/namespace)
 	obj.SetAPIVersion(gvk.GroupVersion().String())
 	obj.SetKind(gvk.Kind)

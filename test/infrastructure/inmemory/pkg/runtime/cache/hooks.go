@@ -17,6 +17,7 @@ limitations under the License.
 package cache
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -35,8 +36,8 @@ func (c *cache) beforeCreate(_ string, obj client.Object) {
 	obj.SetResourceVersion(fmt.Sprintf("v%d", 1))
 }
 
-func (c *cache) afterCreate(resourceGroup string, obj client.Object) {
-	c.informCreate(resourceGroup, obj)
+func (c *cache) afterCreate(ctx context.Context, resourceGroup string, obj client.Object) {
+	c.informCreate(ctx, resourceGroup, obj)
 }
 
 func (c *cache) beforeUpdate(_ string, oldObj, newObj client.Object) {
@@ -56,13 +57,13 @@ func (c *cache) beforeUpdate(_ string, oldObj, newObj client.Object) {
 	}
 }
 
-func (c *cache) afterUpdate(resourceGroup string, oldObj, newObj client.Object) {
+func (c *cache) afterUpdate(ctx context.Context, resourceGroup string, oldObj, newObj client.Object) {
 	if oldObj.GetDeletionTimestamp().IsZero() && !newObj.GetDeletionTimestamp().IsZero() {
 		c.informDelete(resourceGroup, newObj)
 		return
 	}
 	if !reflect.DeepEqual(newObj, oldObj) {
-		c.informUpdate(resourceGroup, oldObj, newObj)
+		c.informUpdate(ctx, resourceGroup, oldObj, newObj)
 	}
 }
 

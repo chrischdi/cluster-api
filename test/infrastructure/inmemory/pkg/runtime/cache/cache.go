@@ -43,10 +43,10 @@ type Cache interface {
 
 	Get(resourceGroup string, key client.ObjectKey, obj client.Object) error
 	List(resourceGroup string, list client.ObjectList, opts ...client.ListOption) error
-	Create(resourceGroup string, obj client.Object) error
-	Delete(resourceGroup string, obj client.Object) error
-	Update(resourceGroup string, obj client.Object) error
-	Patch(resourceGroup string, obj client.Object, patch client.Patch) error
+	Create(ctx context.Context, resourceGroup string, obj client.Object) error
+	Delete(ctx context.Context, resourceGroup string, obj client.Object) error
+	Update(ctx context.Context, resourceGroup string, obj client.Object) error
+	Patch(ctx context.Context, resourceGroup string, obj client.Object, patch client.Patch) error
 
 	GetInformer(ctx context.Context, obj client.Object) (Informer, error)
 	GetInformerForKind(ctx context.Context, gvk schema.GroupVersionKind) (Informer, error)
