@@ -115,7 +115,9 @@ func (h *apiServerHandler) watchForResource(req *restful.Request, resp *restful.
 	L:
 		for {
 			select {
-			case <-events:
+			case event, ok := <-events:
+				o, _ := event.Object.(client.Object)
+				fmt.Printf("watchForResource[%s]: dropped event while shutting down watch for gvk %s ok=%t name=%s\n", resourceGroup, gvk.String(), ok, o.GetName())
 			default:
 				break L
 			}
@@ -141,27 +143,38 @@ func (m *WatchEventDispatcher) Run(ctx context.Context, timeout string, w http.R
 	w.WriteHeader(http.StatusOK)
 	flusher.Flush()
 
-	timeoutTimer, seconds, err := setTimer(timeout)
+	seconds, err := time.ParseDuration(fmt.Sprintf("%ss", timeout))
 	if err != nil {
-		return errors.Wrapf(err, "can't start Watch: could not set timeout")
+		return errors.Wrapf(err, "can't start Watch: could parse timeout %s", timeout)
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, seconds)
 	defer cancel()
-	defer timeoutTimer.Stop()
+	timeoutTimer, cleanup := setTimer(seconds)
+	defer cleanup()
+
 	for {
 		select {
 		case <-ctx.Done():
+			fmt.Printf("WatchEventDispatcher.Run[%s] ctx.Done: returning nil with %d leftover events\n", m.resourceGroup, len(m.events))
 			return nil
-		case <-timeoutTimer.C:
+		case <-timeoutTimer:
+			fmt.Printf("WatchEventDispatcher.Run[%s] timeoutTimer: returning nil with %d leftover events\n", m.resourceGroup, len(m.events))
 			return nil
 		case event, ok := <-m.events:
 			if !ok {
 				// End of results.
 				return nil
 			}
+			o, _ := event.Object.(client.Object)
+			fmt.Printf("WatchEventDispatcher.Run[%s] event: Writing event (type=%s) for %s %s\n", m.resourceGroup, event.Type, o.GetObjectKind().GroupVersionKind().Kind, o.GetName())
 			if err := resp.WriteEntity(event); err != nil {
-				_ = resp.WriteErrorString(http.StatusInternalServerError, err.Error())
+				fmt.Printf("WatchEventDispatcher.Run[%s] event: Error response %s %s: %v\n", m.resourceGroup, o.GetObjectKind().GroupVersionKind().Kind, o.GetName(), err)
+				if err := resp.WriteErrorString(http.StatusInternalServerError, err.Error()); err != nil {
+					fmt.Printf("WatchEventDispatcher.Run[%s] event: Error writing error response %s %s: %v\n", m.resourceGroup, o.GetObjectKind().GroupVersionKind().Kind, o.GetName(), err)
+				}
+			} else {
+				fmt.Printf("WatchEventDispatcher.Run[%s] event: Writing event for %s %s succeeded\n", m.resourceGroup, o.GetObjectKind().GroupVersionKind().Kind, o.GetName())
 			}
 			if len(m.events) == 0 {
 				flusher.Flush()
@@ -170,17 +183,15 @@ func (m *WatchEventDispatcher) Run(ctx context.Context, timeout string, w http.R
 	}
 }
 
+var neverExitWatch <-chan time.Time = make(chan time.Time)
+var neverExitWatchStop = func() bool { return false }
+
 // setTimer creates a time.Timer with the passed `timeout` or a default timeout of 120 seconds if `timeout` is empty.
-func setTimer(timeout string) (*time.Timer, time.Duration, error) {
-	var defaultTimeout = 120 * time.Second
-	if timeout == "" {
-		t := time.NewTimer(defaultTimeout)
-		return t, defaultTimeout, nil
+func setTimer(timeout time.Duration) (<-chan time.Time, func() bool) {
+	if timeout == 0 {
+		return neverExitWatch, func() bool { return false }
 	}
-	seconds, err := time.ParseDuration(fmt.Sprintf("%ss", timeout))
-	if err != nil {
-		return nil, 0, errors.Wrapf(err, "Could not parse request timeout %s", timeout)
-	}
-	t := time.NewTimer(seconds)
-	return t, seconds, nil
+
+	t := time.NewTimer(timeout)
+	return t.C, t.Stop
 }
