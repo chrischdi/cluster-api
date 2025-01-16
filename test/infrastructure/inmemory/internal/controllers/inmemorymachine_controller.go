@@ -201,23 +201,29 @@ func (r *InMemoryMachineReconciler) reconcileNormal(ctx context.Context, cluster
 		return ctrl.Result{}, nil
 	}
 
+	type phasesTuple struct {
+		name string
+		f    func(ctx context.Context, cluster *clusterv1.Cluster, machine *clusterv1.Machine, inMemoryMachine *infrav1.InMemoryMachine) (ctrl.Result, error)
+	}
+
 	// Call the inner reconciliation methods.
-	phases := []func(ctx context.Context, cluster *clusterv1.Cluster, machine *clusterv1.Machine, inMemoryMachine *infrav1.InMemoryMachine) (ctrl.Result, error){
-		r.reconcileNormalCloudMachine,
-		r.reconcileNormalNode,
-		r.reconcileNormalETCD,
-		r.reconcileNormalAPIServer,
-		r.reconcileNormalScheduler,
-		r.reconcileNormalControllerManager,
-		r.reconcileNormalKubeadmObjects,
-		r.reconcileNormalKubeProxy,
-		r.reconcileNormalCoredns,
+	phases := []phasesTuple{
+		{name: "reconcileNormalCloudMachine,", f: r.reconcileNormalCloudMachine},
+		{name: "reconcileNormalNode,", f: r.reconcileNormalNode},
+		{name: "reconcileNormalETCD,", f: r.reconcileNormalETCD},
+		{name: "reconcileNormalAPIServer,", f: r.reconcileNormalAPIServer},
+		{name: "reconcileNormalScheduler,", f: r.reconcileNormalScheduler},
+		{name: "reconcileNormalControllerManager,", f: r.reconcileNormalControllerManager},
+		{name: "reconcileNormalKubeadmObjects,", f: r.reconcileNormalKubeadmObjects},
+		{name: "reconcileNormalKubeProxy,", f: r.reconcileNormalKubeProxy},
+		{name: "reconcileNormalCoredns,", f: r.reconcileNormalCoredns},
 	}
 
 	res := ctrl.Result{}
 	errs := []error{}
 	for _, phase := range phases {
-		phaseResult, err := phase(ctx, cluster, machine, inMemoryMachine)
+		log.V(6).Info("Running phase", "reconcile_phase", phase.name)
+		phaseResult, err := phase.f(ctx, cluster, machine, inMemoryMachine)
 		if err != nil {
 			errs = append(errs, err)
 		}
@@ -369,6 +375,8 @@ func (r *InMemoryMachineReconciler) reconcileNormalNode(ctx context.Context, clu
 		if !apierrors.IsNotFound(err) {
 			return ctrl.Result{}, errors.Wrapf(err, "failed to get node")
 		}
+
+		ctrl.LoggerFrom(ctx).V(4).Info("Creating Node")
 
 		// NOTE: for the first control plane machine we might create the node before etcd and API server pod are running
 		// but this is not an issue, because it won't be visible to CAPI until the API server start serving requests.
