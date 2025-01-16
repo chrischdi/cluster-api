@@ -94,7 +94,7 @@ func (h *apiServerHandler) watchForResource(req *restful.Request, resp *restful.
 	if err != nil {
 		return err
 	}
-	h.log.Info(fmt.Sprintf("Serving Watch for %v", req.Request.URL))
+	h.log.Info(fmt.Sprintf("Serving Watch for %v", req.Request.URL), "resourceGroup", resourceGroup)
 	// With an unbuffered event channel RemoveEventHandler could be blocked because it requires a lock on the informer.
 	// When Run stops reading from the channel the informer could be blocked with an unbuffered chanel and then RemoveEventHandler never goes through.
 	// 1000 is used to avoid deadlocks in clusters with a higher number of Machines/Nodes.
@@ -148,7 +148,7 @@ func (m *WatchEventDispatcher) Run(ctx context.Context, timeout string, w http.R
 		return errors.Wrapf(err, "can't start Watch: could parse timeout %s", timeout)
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, seconds)
+	ctx, cancel := context.WithTimeoutCause(ctx, seconds, errors.New("Run(...) timed out"))
 	defer cancel()
 	timeoutTimer, cleanup := setTimer(seconds)
 	defer cleanup()
@@ -156,7 +156,7 @@ func (m *WatchEventDispatcher) Run(ctx context.Context, timeout string, w http.R
 	for {
 		select {
 		case <-ctx.Done():
-			fmt.Printf("WatchEventDispatcher.Run[%s] ctx.Done: returning nil with %d leftover events\n", m.resourceGroup, len(m.events))
+			fmt.Printf("WatchEventDispatcher.Run[%s] ctx.Done: returning nil with %d leftover events: %v\n", m.resourceGroup, len(m.events), ctx.Err())
 			return nil
 		case <-timeoutTimer:
 			fmt.Printf("WatchEventDispatcher.Run[%s] timeoutTimer: returning nil with %d leftover events\n", m.resourceGroup, len(m.events))
