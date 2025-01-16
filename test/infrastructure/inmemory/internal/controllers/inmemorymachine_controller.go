@@ -385,10 +385,6 @@ func (r *InMemoryMachineReconciler) reconcileNormalNode(ctx context.Context, clu
 	conditions.MarkTrue(inMemoryMachine, infrav1.NodeProvisionedCondition)
 
 	if node.Spec.ProviderID == "" {
-		if now.Before(node.CreationTimestamp.Add(time.Second * 2)) {
-			return ctrl.Result{RequeueAfter: node.CreationTimestamp.Add(time.Second * 2).Sub(now)}, nil
-		}
-
 		ctrl.LoggerFrom(ctx).V(4).Info("Adding the ProviderID ")
 
 		node.Spec.ProviderID = calculateProviderID(inMemoryMachine)
@@ -398,7 +394,7 @@ func (r *InMemoryMachineReconciler) reconcileNormalNode(ctx context.Context, clu
 	}
 
 	if _, ok := node.Annotations["foo"]; !ok {
-		if now.Before(node.CreationTimestamp.Add(time.Second * 300)) {
+		if now.Before(node.CreationTimestamp.Add(time.Second * 60)) {
 			return ctrl.Result{RequeueAfter: node.CreationTimestamp.Add(time.Second * 300).Sub(now)}, nil
 		}
 
