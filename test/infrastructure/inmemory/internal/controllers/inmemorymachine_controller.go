@@ -332,9 +332,6 @@ func (r *InMemoryMachineReconciler) reconcileNormalNode(ctx context.Context, clu
 		ObjectMeta: metav1.ObjectMeta{
 			Name: inMemoryMachine.Name,
 		},
-		Spec: corev1.NodeSpec{
-			ProviderID: calculateProviderID(inMemoryMachine),
-		},
 		Status: corev1.NodeStatus{
 			Conditions: []corev1.NodeCondition{
 				{
@@ -386,6 +383,33 @@ func (r *InMemoryMachineReconciler) reconcileNormalNode(ctx context.Context, clu
 	}
 
 	conditions.MarkTrue(inMemoryMachine, infrav1.NodeProvisionedCondition)
+
+	if node.Spec.ProviderID == "" {
+		if now.Before(node.CreationTimestamp.Add(time.Second * 2)) {
+			return ctrl.Result{RequeueAfter: node.CreationTimestamp.Add(time.Second * 2).Sub(now)}, nil
+		}
+
+		ctrl.LoggerFrom(ctx).V(4).Info("Adding the ProviderID ")
+
+		node.Spec.ProviderID = calculateProviderID(inMemoryMachine)
+		if err := inmemoryClient.Update(ctx, node); err != nil {
+			return ctrl.Result{}, errors.Wrapf(err, "failed to update Node to add .spec.providerID")
+		}
+	}
+
+	if _, ok := node.Annotations["foo"]; !ok {
+		if now.Before(node.CreationTimestamp.Add(time.Second * 300)) {
+			return ctrl.Result{RequeueAfter: node.CreationTimestamp.Add(time.Second * 300).Sub(now)}, nil
+		}
+
+		ctrl.LoggerFrom(ctx).V(4).Info("Adding the foo annotation")
+
+		node.Annotations["foo"] = ""
+		if err := inmemoryClient.Update(ctx, node); err != nil {
+			return ctrl.Result{}, errors.Wrapf(err, "failed to update Node to add the foo annotation")
+		}
+	}
+
 	return ctrl.Result{}, nil
 }
 
