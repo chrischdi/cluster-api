@@ -395,7 +395,7 @@ func (r *InMemoryMachineReconciler) reconcileNormalNode(ctx context.Context, clu
 
 	if _, ok := node.Annotations["foo"]; !ok {
 		if now.Before(node.CreationTimestamp.Add(time.Second * 60)) {
-			return ctrl.Result{RequeueAfter: node.CreationTimestamp.Add(time.Second * 300).Sub(now)}, nil
+			return ctrl.Result{RequeueAfter: node.CreationTimestamp.Add(time.Second * 60).Sub(now)}, nil
 		}
 
 		ctrl.LoggerFrom(ctx).V(4).Info("Adding the foo annotation")
