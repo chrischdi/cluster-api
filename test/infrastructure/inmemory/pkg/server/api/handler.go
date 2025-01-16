@@ -318,7 +318,7 @@ func (h *apiServerHandler) apiV1List(req *restful.Request, resp *restful.Respons
 		return
 	}
 
-	h.log.Info(fmt.Sprintf("Serving List for %v", req.Request.URL))
+	h.log.Info(fmt.Sprintf("Serving List for %v", req.Request.URL), "resourceGroup", resourceGroup)
 
 	// Reads and returns the requested data.
 	list := &unstructured.UnstructuredList{}
