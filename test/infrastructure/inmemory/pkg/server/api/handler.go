@@ -52,6 +52,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	inmemoryruntime "sigs.k8s.io/cluster-api/test/infrastructure/inmemory/pkg/runtime"
+	inmemoryclient "sigs.k8s.io/cluster-api/test/infrastructure/inmemory/pkg/runtime/client"
 	inmemoryportforward "sigs.k8s.io/cluster-api/test/infrastructure/inmemory/pkg/server/api/portforward"
 )
 
@@ -320,6 +321,23 @@ func (h *apiServerHandler) apiV1List(req *restful.Request, resp *restful.Respons
 
 	h.log.Info(fmt.Sprintf("Serving List for %v", req.Request.URL))
 
+	list, err := h.apiV1list(ctx, req, *gvk, inmemoryClient)
+	if err != nil {
+		if status, ok := err.(apierrors.APIStatus); ok || errors.As(err, &status) {
+			_ = resp.WriteHeaderAndEntity(int(status.Status().Code), status)
+			return
+		}
+		_ = resp.WriteErrorString(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	if err := resp.WriteEntity(list); err != nil {
+		_ = resp.WriteErrorString(http.StatusInternalServerError, err.Error())
+		return
+	}
+}
+
+func (h *apiServerHandler) apiV1list(ctx context.Context, req *restful.Request, gvk schema.GroupVersionKind, inmemoryClient inmemoryclient.Client) (*unstructured.UnstructuredList, error) {
 	// Reads and returns the requested data.
 	list := &unstructured.UnstructuredList{}
 	list.SetAPIVersion(gvk.GroupVersion().String())
@@ -333,8 +351,7 @@ func (h *apiServerHandler) apiV1List(req *restful.Request, resp *restful.Respons
 	// TODO: The only field Selector which works is for `spec.nodeName` on pods.
 	fieldSelector, err := fields.ParseSelector(req.QueryParameter("fieldSelector"))
 	if err != nil {
-		_ = resp.WriteErrorString(http.StatusInternalServerError, err.Error())
-		return
+		return nil, err
 	}
 	if fieldSelector != nil {
 		listOpts = append(listOpts, client.MatchingFieldsSelector{Selector: fieldSelector})
@@ -342,24 +359,15 @@ func (h *apiServerHandler) apiV1List(req *restful.Request, resp *restful.Respons
 
 	labelSelector, err := labels.Parse(req.QueryParameter("labelSelector"))
 	if err != nil {
-		_ = resp.WriteErrorString(http.StatusInternalServerError, err.Error())
-		return
+		return nil, err
 	}
 	if labelSelector != nil {
 		listOpts = append(listOpts, client.MatchingLabelsSelector{Selector: labelSelector})
 	}
 	if err := inmemoryClient.List(ctx, list, listOpts...); err != nil {
-		if status, ok := err.(apierrors.APIStatus); ok || errors.As(err, &status) {
-			_ = resp.WriteHeaderAndEntity(int(status.Status().Code), status)
-			return
-		}
-		_ = resp.WriteHeaderAndEntity(http.StatusInternalServerError, err.Error())
-		return
+		return nil, err
 	}
-	if err := resp.WriteEntity(list); err != nil {
-		_ = resp.WriteErrorString(http.StatusInternalServerError, err.Error())
-		return
-	}
+	return list, nil
 }
 
 func (h *apiServerHandler) apiV1Watch(req *restful.Request, resp *restful.Response) {

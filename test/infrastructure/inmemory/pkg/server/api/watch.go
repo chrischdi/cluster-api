@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/emicklei/go-restful/v3"
@@ -89,6 +90,7 @@ func (m *WatchEventDispatcher) OnGeneric(resourceGroup string, o client.Object) 
 func (h *apiServerHandler) watchForResource(req *restful.Request, resp *restful.Response, resourceGroup string, gvk schema.GroupVersionKind) (reterr error) {
 	ctx := req.Request.Context()
 	queryTimeout := req.QueryParameter("timeoutSeconds")
+	resourceVersion := req.QueryParameter("resourceVersion")
 	c := h.manager.GetCache()
 	i, err := c.GetInformerForKind(ctx, gvk)
 	if err != nil {
@@ -106,6 +108,35 @@ func (h *apiServerHandler) watchForResource(req *restful.Request, resp *restful.
 
 	if err := i.AddEventHandler(watcher); err != nil {
 		return err
+	}
+
+	if resourceVersion != "" {
+		parsedResourceVersion, err := strconv.ParseUint(resourceVersion, 10, 64)
+		if err != nil {
+			return err
+		}
+		// Gets at client to the resource group.
+		inmemoryClient := h.manager.GetResourceGroup(resourceGroup).GetClient()
+
+		list, err := h.apiV1list(ctx, req, gvk, inmemoryClient)
+		if err != nil {
+			return err
+		}
+		var objResourceVersion uint64
+		for _, obj := range list.Items {
+			objResourceVersion, err = strconv.ParseUint(obj.GetResourceVersion(), 10, 64)
+			if err != nil {
+				return err
+			}
+			if objResourceVersion < parsedResourceVersion {
+				continue
+			}
+			if obj.GetGeneration() == 0 {
+				watcher.OnCreate(resourceGroup, &obj)
+				continue
+			}
+			watcher.OnUpdate(resourceGroup, nil, &obj)
+		}
 	}
 
 	// Defer cleanup which removes the event handler and ensures the channel is empty of events.
