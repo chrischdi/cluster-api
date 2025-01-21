@@ -282,7 +282,7 @@ func (r *KubeadmConfigReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	res, err := r.reconcile(ctx, scope, cluster, config, configOwner)
 	if err != nil && errors.Is(err, clustercache.ErrClusterNotConnected) {
 		log.V(5).Info("Requeuing because connection to the workload cluster is down")
-		return ctrl.Result{RequeueAfter: time.Minute}, nil
+		return ctrl.Result{}, nil
 	}
 	return res, err
 }

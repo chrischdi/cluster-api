@@ -193,7 +193,7 @@ func (r *DockerMachineReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	// the current cluster because of concurrent access.
 	if errors.Is(err, clustercache.ErrClusterNotConnected) {
 		log.V(5).Info("Requeuing because connection to the workload cluster is down")
-		return ctrl.Result{RequeueAfter: time.Minute}, nil
+		return ctrl.Result{}, nil
 	}
 	return res, err
 }

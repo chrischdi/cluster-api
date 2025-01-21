@@ -258,7 +258,7 @@ func (r *KubeadmControlPlaneReconciler) Reconcile(ctx context.Context, req ctrl.
 		res, err = r.reconcileDelete(ctx, controlPlane)
 		if errors.Is(err, clustercache.ErrClusterNotConnected) {
 			log.V(5).Info("Requeuing because connection to the workload cluster is down")
-			return ctrl.Result{RequeueAfter: time.Minute}, nil
+			return ctrl.Result{}, nil
 		}
 		return res, err
 	}
@@ -267,7 +267,7 @@ func (r *KubeadmControlPlaneReconciler) Reconcile(ctx context.Context, req ctrl.
 	res, err = r.reconcile(ctx, controlPlane)
 	if errors.Is(err, clustercache.ErrClusterNotConnected) {
 		log.V(5).Info("Requeuing because connection to the workload cluster is down")
-		return ctrl.Result{RequeueAfter: time.Minute}, nil
+		return ctrl.Result{}, nil
 	}
 	return res, err
 }

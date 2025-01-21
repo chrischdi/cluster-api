@@ -265,7 +265,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (retres ct
 			} else {
 				log.V(5).Info("Requeuing because connection to the workload cluster is down")
 			}
-			return ctrl.Result{RequeueAfter: time.Minute}, nil
+			return ctrl.Result{}, nil
 		}
 		err = kerr
 	}
