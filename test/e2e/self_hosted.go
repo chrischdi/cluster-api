@@ -343,9 +343,10 @@ func SelfHostedSpec(ctx context.Context, inputGetter func() SelfHostedSpecInput)
 
 		Byf("Verify Machines Ready condition is true")
 		framework.VerifyMachinesReady(ctx, framework.VerifyMachinesReadyInput{
-			Lister:    selfHostedClusterProxy.GetClient(),
-			Name:      clusterResources.Cluster.Name,
-			Namespace: clusterResources.Cluster.Namespace,
+			Lister:        selfHostedClusterProxy.GetClient(),
+			Name:          clusterResources.Cluster.Name,
+			Namespace:     clusterResources.Cluster.Namespace,
+			WaitIntervals: input.E2EConfig.GetIntervals(specName, "wait-machine-ready"),
 		})
 
 		if input.SkipUpgrade {
@@ -452,9 +453,10 @@ func SelfHostedSpec(ctx context.Context, inputGetter func() SelfHostedSpecInput)
 
 		Byf("Verify Machines Ready condition is true")
 		framework.VerifyMachinesReady(ctx, framework.VerifyMachinesReadyInput{
-			Lister:    selfHostedClusterProxy.GetClient(),
-			Name:      clusterResources.Cluster.Name,
-			Namespace: clusterResources.Cluster.Namespace,
+			Lister:        selfHostedClusterProxy.GetClient(),
+			Name:          clusterResources.Cluster.Name,
+			Namespace:     clusterResources.Cluster.Namespace,
+			WaitIntervals: input.E2EConfig.GetIntervals(specName, "wait-machine-ready"),
 		})
 
 		By("PASSED!")

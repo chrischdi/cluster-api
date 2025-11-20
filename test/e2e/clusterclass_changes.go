@@ -281,9 +281,10 @@ func ClusterClassChangesSpec(ctx context.Context, inputGetter func() ClusterClas
 
 		Byf("Verify Machines Ready condition is true")
 		framework.VerifyMachinesReady(ctx, framework.VerifyMachinesReadyInput{
-			Lister:    input.BootstrapClusterProxy.GetClient(),
-			Name:      clusterResources.Cluster.Name,
-			Namespace: clusterResources.Cluster.Namespace,
+			Lister:        input.BootstrapClusterProxy.GetClient(),
+			Name:          clusterResources.Cluster.Name,
+			Namespace:     clusterResources.Cluster.Namespace,
+			WaitIntervals: input.E2EConfig.GetIntervals(specName, "wait-machine-ready"),
 		})
 
 		By("Deleting a MachineDeploymentTopology in the Cluster Topology and wait for associated MachineDeployment to be deleted")

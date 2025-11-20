@@ -464,13 +464,19 @@ func VerifyClusterAvailable(ctx context.Context, input VerifyClusterAvailableInp
 }
 
 type VerifyMachinesReadyInput struct {
-	Lister    Lister
-	Name      string
-	Namespace string
+	Lister        Lister
+	Name          string
+	Namespace     string
+	WaitIntervals []interface{}
 }
 
 // VerifyMachinesReady verifies that all Machines' Ready condition is set to true.
 func VerifyMachinesReady(ctx context.Context, input VerifyMachinesReadyInput) {
+	waitIntervals := []interface{}{5 * time.Minute, 10 * time.Second}
+	if input.WaitIntervals != nil {
+		waitIntervals = input.WaitIntervals
+	}
+
 	machineList := &clusterv1.MachineList{}
 
 	// Wait for all machines to have Ready condition set to true.
@@ -494,5 +500,5 @@ func VerifyMachinesReady(ctx context.Context, input VerifyMachinesReadyInput) {
 			}
 			g.Expect(readyConditionFound).To(BeTrue(), "Machine %q should have a Ready condition", machine.Name)
 		}
-	}, 5*time.Minute, 10*time.Second).Should(Succeed(), "Failed to verify Machines Ready condition for Cluster %s", klog.KRef(input.Namespace, input.Name))
+	}, waitIntervals...).Should(Succeed(), "Failed to verify Machines Ready condition for Cluster %s", klog.KRef(input.Namespace, input.Name))
 }

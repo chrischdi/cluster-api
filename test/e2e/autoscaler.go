@@ -374,9 +374,10 @@ func AutoscalerSpec(ctx context.Context, inputGetter func() AutoscalerSpecInput)
 
 		Byf("Verify Machines Ready condition is true")
 		framework.VerifyMachinesReady(ctx, framework.VerifyMachinesReadyInput{
-			Lister:    input.BootstrapClusterProxy.GetClient(),
-			Name:      clusterResources.Cluster.Name,
-			Namespace: clusterResources.Cluster.Namespace,
+			Lister:        input.BootstrapClusterProxy.GetClient(),
+			Name:          clusterResources.Cluster.Name,
+			Namespace:     clusterResources.Cluster.Namespace,
+			WaitIntervals: input.E2EConfig.GetIntervals(specName, "wait-machine-ready"),
 		})
 
 		By("PASSED!")

@@ -256,9 +256,10 @@ func KCPAdoptionSpec(ctx context.Context, inputGetter func() KCPAdoptionSpecInpu
 
 		Byf("Verify Machines Ready condition is true")
 		framework.VerifyMachinesReady(ctx, framework.VerifyMachinesReadyInput{
-			Lister:    input.BootstrapClusterProxy.GetClient(),
-			Name:      cluster.Name,
-			Namespace: cluster.Namespace,
+			Lister:        input.BootstrapClusterProxy.GetClient(),
+			Name:          cluster.Name,
+			Namespace:     cluster.Namespace,
+			WaitIntervals: input.E2EConfig.GetIntervals(specName, "wait-machine-ready"),
 		})
 
 		By("PASSED!")

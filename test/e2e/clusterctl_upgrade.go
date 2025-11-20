@@ -740,9 +740,10 @@ func ClusterctlUpgradeSpec(ctx context.Context, inputGetter func() ClusterctlUpg
 
 				Byf("[%d] Verify Machines Ready condition is true", i)
 				framework.VerifyMachinesReady(ctx, framework.VerifyMachinesReadyInput{
-					Lister:    managementClusterProxy.GetClient(),
-					Name:      workloadCluster.Name,
-					Namespace: workloadCluster.Namespace,
+					Lister:        managementClusterProxy.GetClient(),
+					Name:          workloadCluster.Name,
+					Namespace:     workloadCluster.Namespace,
+					WaitIntervals: input.E2EConfig.GetIntervals(specName, "wait-machine-ready"),
 				})
 			}
 
