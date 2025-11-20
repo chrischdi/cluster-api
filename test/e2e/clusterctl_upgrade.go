@@ -1006,16 +1006,33 @@ func calculateExpectedMachinePoolMachineCount(ctx context.Context, c client.Clie
 		client.MatchingLabels{clusterv1.ClusterNameLabel: workloadClusterName},
 	); err == nil {
 		for _, mp := range machinePoolList.Items {
-			ref := &corev1.ObjectReference{}
-			err = util.UnstructuredUnmarshalField(&mp, ref, "spec", "template", "spec", "infrastructureRef")
-			if err != nil && !errors.Is(err, util.ErrUnstructuredFieldNotFound) {
-				return 0, err
+			var infraMachinePool *unstructured.Unstructured
+			if mp.GetAPIVersion() == clusterv1.GroupVersion.String() {
+				// Use contract versioned reference.
+				ref := clusterv1.ContractVersionedObjectReference{}
+				err = util.UnstructuredUnmarshalField(&mp, ref, "spec", "template", "spec", "infrastructureRef")
+				if err != nil && !errors.Is(err, util.ErrUnstructuredFieldNotFound) {
+					return 0, err
+				}
+
+				infraMachinePool, err = external.GetObjectFromContractVersionedRef(ctx, c, ref, workloadClusterNamespace)
+				if err != nil {
+					return 0, err
+				}
+			} else {
+				// Fallback to corev1.ObjectReference.
+				ref := &corev1.ObjectReference{}
+				err = util.UnstructuredUnmarshalField(&mp, ref, "spec", "template", "spec", "infrastructureRef")
+				if err != nil && !errors.Is(err, util.ErrUnstructuredFieldNotFound) {
+					return 0, err
+				}
+
+				infraMachinePool, err = external.Get(ctx, c, ref)
+				if err != nil {
+					return 0, err
+				}
 			}
 
-			infraMachinePool, err := external.Get(ctx, c, ref)
-			if err != nil {
-				return 0, err
-			}
 			// Check if the InfraMachinePool has an infrastructureMachineKind field. If it does not, we should skip checking for MachinePool machines.
 			err = util.UnstructuredUnmarshalField(infraMachinePool, ptr.To(""), "status", "infrastructureMachineKind")
 			if err != nil && !errors.Is(err, util.ErrUnstructuredFieldNotFound) {
