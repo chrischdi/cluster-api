@@ -30,6 +30,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
@@ -403,10 +404,31 @@ func (p *clusterProxy) GetWorkloadCluster(ctx context.Context, namespace, name s
 	return newFromAPIConfig(name, config, p.scheme, options...)
 }
 
+func getCoreCAPIStorageVersion(ctx context.Context, c client.Client) string {
+	clusterCRD := &apiextensionsv1.CustomResourceDefinition{}
+	if err := c.Get(ctx, client.ObjectKey{Name: "clusters.cluster.x-k8s.io"}, clusterCRD); err != nil {
+		Expect(err).ToNot(HaveOccurred(), "failed to retrieve a machine CRD")
+	}
+	// Pick the storage version
+	for _, version := range clusterCRD.Spec.Versions {
+		if version.Storage {
+			return version.Name
+		}
+	}
+	Fail("Cluster CRD has no storage version")
+	return ""
+}
+
 // CollectWorkloadClusterLogs collects machines and infrastructure logs and from the workload cluster.
 func (p *clusterProxy) CollectWorkloadClusterLogs(ctx context.Context, namespace, name, outputPath string) {
 	if p.logCollector == nil {
 		fmt.Printf("Unable to get logs for workload Cluster %s: log collector is nil.\n", klog.KRef(namespace, name))
+		return
+	}
+
+	storageVersion := getCoreCAPIStorageVersion(ctx, p.GetClient())
+	if storageVersion == "v1beta1" {
+		fmt.Println("Skip getting logs for workload Cluster for v1beta1")
 		return
 	}
 
